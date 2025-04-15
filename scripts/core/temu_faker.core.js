@@ -1,4 +1,5 @@
 window.temu_faker_core = async () => {
+    console.log('temu_faker_core running')
     if (window.location.pathname === '/mmsos/print.html') return
     // -----------------------------------------------------------------------------
     // 模糊匹配内容元素

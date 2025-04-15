@@ -14,8 +14,14 @@
 // @grant        GM_getResourceURL
 // @grant        unsafeWindow
 // @require      https://cdn.bootcdn.net/ajax/libs/xlsx/0.17.0/xlsx.full.min.js
+// @require      https://gh-proxy.com/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/temu_helper_v2.core.js
 // ==/UserScript==
 
+// 代理
+// https://gh-proxy.com/$GITHUB_URL
+// https://ghfast.top/$GITHUB_URL
 (async function() {
-    
+    setTimeout(() => {
+        temu_helper_v2_core();
+    }, 100)
 })();

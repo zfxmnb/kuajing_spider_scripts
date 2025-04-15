@@ -11,8 +11,12 @@
 // @match        https://cnuser.returnhelper.com.hk/*
 // @match        https://cnuser.returnhelper.com/*
 // @grant        GM_xmlhttpRequest
+// @require      https://gh-proxy.com/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/common_plugin.core.js
 // ==/UserScript==
 
+// 代理
+// https://gh-proxy.com/$GITHUB_URL
+// https://ghfast.top/$GITHUB_URL
 (async function() {
-    
+    common_plugin_core();
 })();
