@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         temu_helper_config
+// @name         temu_helper_v2
 // @namespace    http://tampermonkey.net/
 // @version      2024-06-15
 // @description  try to take over the world!
@@ -8,18 +8,14 @@
 // @match        https://agentseller.temu.com/*
 // @match        https://agentseller-us.temu.com/*
 // @exclude      *iframe*
-// @run-at       document-start
+// @run-at       document-end
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
-// @grant        none
+// @grant        GM_xmlhttpRequest
+// @grant        GM_getResourceURL
+// @grant        unsafeWindow
+// @require      https://cdn.bootcdn.net/ajax/libs/xlsx/0.17.0/xlsx.full.min.js
 // ==/UserScript==
 
-(function() {
-    window.top._temu_helper_config_map_ = {
-        "default": {
-            Name: "Millet life",
-            Port: 5431
-            // Name: "All in one",
-            // Port: 5432
-        }
-    }
-})()
+(async function() {
+    
+})();
