@@ -1,4 +1,4 @@
-window.dianxiaomi_gigab2b_parser_core = () => {
+window.dianxiaomi_gigab2b_parser_core = async () => {
     // const ServiceCharge = 0.15
     const ServiceCharge = 0
     function styles(content){

@@ -1,4 +1,4 @@
-window.dianxiaomi_core = () => {
+window.dianxiaomi_core = async () => {
     function styles(content){
         const style = document.createElement('style');
         style.innerText = content

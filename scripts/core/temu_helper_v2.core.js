@@ -1,4 +1,4 @@
-window.temu_helper_v2_core = () => {
+window.temu_helper_v2_core = async () => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
