@@ -1423,6 +1423,7 @@ window.temu_helper_v2_core = async () => {
                 console.error("Error fetching data:", error);
             })
         }
+        const temu_orders_sync_checkout = root.querySelector('#temu_orders_sync_checkout')
         const syncCheckout = async (silence, callback) => {
             if (silence || confirm(`同步近${checkoutDays > 1 ? checkoutDays: '今'}天已结算订单金额，是否继续？\n【注意】: 订单原价为 0 时将被设置为订单售价一致`)) {
                 temu_orders_sync_checkout.classList.add('hide')
@@ -1482,7 +1483,6 @@ window.temu_helper_v2_core = async () => {
             }
         }
         if (agentSeller) {
-            const temu_orders_sync_checkout = root.querySelector('#temu_orders_sync_checkout')
             temu_orders_sync_checkout.addEventListener('click', () => syncCheckout())
             const key = `${Name}__temu_orders_sync_checkout_date__`
             const temu_orders_sync_checkout_date = localStorage.getItem(key)
