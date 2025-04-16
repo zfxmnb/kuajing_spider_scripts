@@ -739,7 +739,7 @@ window.temu_helper_v2_core = async () => {
                     
                     orders.push({
                         id,
-                        orderStatus: orderStatus ?? '异常',,
+                        orderStatus: orderStatus ?? '异常',
                         orderStatusText: orderStatusMap[orderStatus] || '异常',
                         parentOrderId: parentOrderSn,
                         orderId: orderSn,
