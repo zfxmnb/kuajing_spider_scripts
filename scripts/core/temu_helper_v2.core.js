@@ -255,7 +255,9 @@ window.temu_helper_v2_core = async () => {
     function setCurrentOrderData(data, excelFile) {
         currentOrderData = data
         currentOrderDataMap = arr2Map(currentOrderData, 'id')
-        const todayFirst = new Date().setHours(0, 0, 0, 0).getTime()
+        const d = new Date()
+        d.setHours(0, 0, 0, 0)
+        const todayFirst = d.getTime()
         const validStatusMap = {2: 1, 4: 1, 5: 1, '未发货': 1, '已发货': 1, '已完成': 1}
         currentOrderData.forEach((order) => {
             const ts = order.createTs ?? new Date(order.createTime).getTime();
