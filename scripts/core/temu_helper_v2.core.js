@@ -25,9 +25,11 @@ window.temu_helper_v2_core = async () => {
     const seller = window.location.host.includes('seller.kuajingmaihuo.com')
     const agentSeller = window.location.host.includes('agentseller.temu.com') || window.location.host.includes('agentseller-us.temu.com')
     const orderStatusMap = {
+        1: '平台处理中',
         2: '未发货',
         4: '已发货',
-        5: '已完成'
+        5: '已完成',
+        3: '已取消',
     }
     const ReductionInterval = 0 // 30 * 60 * 1000 // 批量改价检查间隔，0则不检查
 
@@ -192,6 +194,7 @@ window.temu_helper_v2_core = async () => {
     let currentDataTime = null
     let currentOrderData = []
     let currentOrderDataMap = {}
+    let currentTodayOrderData = []
     let currentOrderDataTime = null
     // 获取商城ID
     async function getMallId () {
@@ -252,6 +255,14 @@ window.temu_helper_v2_core = async () => {
     function setCurrentOrderData(data, excelFile) {
         currentOrderData = data
         currentOrderDataMap = arr2Map(currentOrderData, 'id')
+        const todayFirst = new Date().setHours(0, 0, 0, 0).getTime()
+        const validStatusMap = {2: 1, 4: 1, 5: 1, '未发货': 1, '已发货': 1, '已完成': 1}
+        currentOrderData.forEach((order) => {
+            const ts = order.createTs ?? new Date(order.createTime).getTime();
+            if (validStatusMap[order.orderStatus] && ts > todayFirst) {
+                currentTodayOrderData.push(order)
+            }
+        })
         const temu_order_download = root.querySelector('#temu_order_download')
         if (excelFile) {
             temu_order_download.href = `${Origin}/api/temu/download/${excelFile}`
@@ -378,7 +389,7 @@ window.temu_helper_v2_core = async () => {
         pageItems?.forEach?.(({ parentAfterSalesSn, parentOrderSn, afterSalesItemVOList, createdAt } = {}) => {
             afterSales.push({
                 id: parentAfterSalesSn,
-                orders: afterSalesItemVOList?.map(({ orderSn, productSkuId: sku, goodsName } = {}) => {
+                orders: afterSalesItemVOList?.map(({ orderSn, orderStatus, productSkuId: sku, goodsName } = {}) => {
                     const id = `${orderSn}_${sku}`
                     const quantity = currentOrderDataMap[id]?.quantity || 1
                     const p = currentDataMap[sku]?.price === '#' ? 0 : (currentDataMap[sku]?.price ? numberFixed(currentDataMap[sku]?.price * quantity) : currentOrderDataMap[id]?.price || 0)
@@ -390,7 +401,8 @@ window.temu_helper_v2_core = async () => {
                     let profitMargin = currentOrderDataMap[id]?.profitMargin
                     return {
                         id,
-                        orderStatus: '异常',
+                        orderStatus: orderStatus ?? '异常',
+                        orderStatusText: orderStatusMap[orderStatus] || '异常',
                         parentOrderId: parentOrderSn,
                         orderId: orderSn,
                         sku,
@@ -400,8 +412,9 @@ window.temu_helper_v2_core = async () => {
                         costPrice,
                         profit,
                         profitMargin,
-                        link: currentOrderDataMap[id]?.link || currentDataMap[sku]?.link ||null,
+                        link: currentOrderDataMap[id]?.link || currentDataMap[sku]?.link || null,
                         createTime: createdAt,
+                        createTs: new Date(createdAt).getTime(),
                         tag: currentOrderDataMap[id]?.tag || '',
                     }
                 })
@@ -459,12 +472,13 @@ window.temu_helper_v2_core = async () => {
         let totalAmount = 0
         let totalCostAmount = 0
         let totalQuantity = 0
+        let todayTotalAmount = 0
+        let todayTotalCostAmount = 0
+        let todayTotalQuantity = 0
         let unsettledAmount = 0
         let unsettledCostAmount = 0
 
         data.forEach((item) => {
-            const today = new Date();
-            today.setHours(23, 59, 59, 999);
             if (item.settled === false) {
                 unsettledAmount += item?.price ?? 0
                 unsettledCostAmount += item?.costPrice ?? 0
@@ -473,18 +487,26 @@ window.temu_helper_v2_core = async () => {
             totalAmount += item['price'] ?? 0
             totalCostAmount += item['costPrice'] ?? 0
         })
+        currentTodayOrderData.forEach((item) => {
+            todayTotalQuantity += item['quantity'] ?? 0
+            todayTotalAmount += item['price'] ?? 0
+            todayTotalCostAmount += item['costPrice'] ?? 0
+        })
         const format  = (num, noZero) => {
             const result = `${numberFixed(num, 0)}`.replace(/^(\d+)(?=\d{4})/, '<b>$1</b>')
             return result === '0' && noZero ? '': result
         }
         const totalProfitMargin = totalCostAmount ? numberFixed(((totalAmount - totalCostAmount) / totalCostAmount) * 100, 0) : '-'
         const totalProfit = format(totalAmount - totalCostAmount, 0)
+        const todayTotalProfit = format(todayTotalAmount - todayTotalCostAmount, 0)
         totalAmount = format(totalAmount)
         unsettledAmount = format(unsettledAmount, true)
         totalCostAmount = format(totalCostAmount)
         unsettledCostAmount = format(unsettledCostAmount, true)
+        todayTotalAmount = format(todayTotalAmount)
+        todayTotalCostAmount = format(todayTotalCostAmount)
         
-        statistics.innerHTML=`订单统计:(¥${totalAmount}${unsettledAmount ? `<span title="待结算金额"> [${unsettledAmount}]</span>`: ''} - ¥${totalCostAmount}${unsettledCostAmount ? `<span title="待结算成本"> [${unsettledCostAmount}]</span>`: ''})=¥${totalProfit}(${totalProfitMargin}%) | <b title="子单数量，销售商品件数:${totalQuantity}">${data?.length ?? 0}</b>单`
+        statistics.innerHTML=`订单统计:(<span title="今日销售金额:${todayTotalAmount} | 待结算: ${unsettledAmount}">¥${totalAmount}</span> - <span title="今日销售成本:${todayTotalCostAmount} | 待结算成本:${unsettledCostAmount}">¥${totalCostAmount}</span>)=<span title="今日利润: ${todayTotalProfit}">¥${totalProfit}(${totalProfitMargin}%)</span> | <b title="今日销售件数: ${todayTotalQuantity} | 销售商品件数: ${totalQuantity}">${data?.length ?? 0}</b>单`
     }
     // 获取订单数据
     function getOrdersData(init) {
@@ -645,10 +667,18 @@ window.temu_helper_v2_core = async () => {
             return { startTime: stamp1 - oneDay, endTime: stamp2 - oneDay }
         } 
         if (type == 3) {
-            // 七天
-            return { startTime: stamp1 - 6 * oneDay, endTime: stamp2 }
+            // 三天
+            return { startTime: stamp1 - 2 * oneDay, endTime: stamp2 }
         }
         if (type == 4) {
+            // 7天
+            return { startTime: stamp1 - 6 * oneDay, endTime: stamp2 }
+        } 
+        if (type == 5) {
+            // 15天
+            return { startTime: stamp1 - 14 * oneDay, endTime: stamp2 }
+        } 
+        if (type == 6) {
             // 28天
             return { startTime: stamp1 - 27 * oneDay, endTime: stamp2 }
         } 
@@ -709,7 +739,8 @@ window.temu_helper_v2_core = async () => {
                     
                     orders.push({
                         id,
-                        orderStatus: price ? orderStatusMap[orderStatus] : '异常',
+                        orderStatus: orderStatus ?? '异常',,
+                        orderStatusText: orderStatusMap[orderStatus] || '异常',
                         parentOrderId: parentOrderSn,
                         orderId: orderSn,
                         sku,
@@ -1323,10 +1354,12 @@ window.temu_helper_v2_core = async () => {
                     temu_orders_sync_cover.classList.add('hide')
                     await getOrdersData()
                     const list = await getTemuOrders(0, [2, 4, 5], 0, false)
+                    const cancelList = await getTemuOrders(3, [3], 6, false)
                     const listMap = arr2Map(list, 'id')
+                    const cancelListMap = arr2Map(cancelList, 'id')
                     const oldList = []
                     currentOrderData.forEach((item) => {
-                        if (item && !listMap[item.id]) {
+                        if (item && !listMap[item.id] && !cancelListMap[item.id]) {
                             oldList.push(item)
                         }
                     })
@@ -1553,7 +1586,7 @@ window.temu_helper_v2_core = async () => {
             order1 = order1.filter((item) => {
                 const t = order1Sended[item?.id]
                 if (!t) {
-                    order1Sended[item?.id] = now + 7 * oneDay
+                    order1Sended[item?.id] = now + 3 * oneDay
                 }
                 return !t || now > t
             })
@@ -1567,7 +1600,7 @@ window.temu_helper_v2_core = async () => {
             order2 = order2.filter((item) => {
                 const t = order2Sended[item?.id]
                 if (!t) {
-                    order2Sended[item?.id] = now + 7 * oneDay
+                    order2Sended[item?.id] = now + 3 * oneDay
                 }
                 return !t || now > t
             })
@@ -1581,7 +1614,7 @@ window.temu_helper_v2_core = async () => {
             order3 = order3.filter((item) => {
                 const t = order3Sended[item?.id]
                 if (!t) {
-                    order3Sended[item?.id] = now + 7 * oneDay
+                    order3Sended[item?.id] = now + 3 * oneDay
                 }
                 return !t || now > t
             })
@@ -1616,7 +1649,7 @@ window.temu_helper_v2_core = async () => {
             const refund1List = refund1s?.filter?.(({ id }) => {
                 const t = refund1Sended[id]
                 if (!t) {
-                    refund1Sended[id] = now + 7 * oneDay
+                    refund1Sended[id] = now + 3 * oneDay
                 }
                 return !t || now > t
             }) || []
@@ -1630,7 +1663,7 @@ window.temu_helper_v2_core = async () => {
             const refund2List = refund2s?.filter?.(({ id }) => {
                 const t = refund2Sended[id]
                 if (!t) {
-                    refund2Sended[id] = now + 7 * oneDay
+                    refund2Sended[id] = now + 3 * oneDay
                 }
                 return !t || now > t
             }) || []
@@ -1685,6 +1718,22 @@ window.temu_helper_v2_core = async () => {
             }
             localStorage.setItem(key, now)
         }
+        const statisticsNoticeKey = `${Name}__temu_statistics_notice_last_time__`
+        const pollingStatistics = async () => {
+            const todayDate = new Date().toLocaleDateString()
+            const prevLastDate = localStorage.getItem(statisticsNoticeKey)
+            await getOrdersData();
+            if (new Date().getHours() === 23 && todayDate !== prevLastDate) {
+                let todayTotalQuantity = 0
+                let todayTotalAmount = 0
+                currentTodayOrderData?.forEach?.((item) => {
+                    todayTotalQuantity += item['quantity'] ?? 0
+                    todayTotalAmount += item['price'] ?? 0
+                })
+                notice((Name ? `【${Name}】` : '') + '[今日统计]', `销售额: ¥${numberFixed(todayTotalAmount)}\n商品件数: ${todayTotalQuantity}`)
+                localStorage.setItem(statisticsNoticeKey, todayDate)
+            }
+        }
         setExactInterval(async () => {
             console.log('检查订单：', new Date().toLocaleString())
             pollingHandle()
@@ -1695,6 +1744,10 @@ window.temu_helper_v2_core = async () => {
             console.log('聊天检测：', new Date().toLocaleString())
             pollingChat()
         }, chatPollingInterval)
+        setExactInterval(async () => {
+            console.log('每日统计：', new Date().toLocaleString())
+            pollingStatistics()
+        }, 60 * 60 * 1000)
         setExactInterval(() => {
             console.log('心跳检查：', new Date().toLocaleString())
         }, 60 * 1000)
