@@ -508,7 +508,7 @@ window.temu_helper_v2_core = async () => {
         todayTotalAmount = format(todayTotalAmount)
         todayTotalCostAmount = format(todayTotalCostAmount)
         
-        statistics.innerHTML=`订单统计:(<span title="今日销售金额: ￥${todayTotalAmount} | 待结算: ￥${unsettledAmount}">¥${totalAmount}</span> - <span title="今日销售成本: ￥${todayTotalCostAmount} | 待结算成本: ￥${unsettledCostAmount}">¥${totalCostAmount}</span>)=<span title="今日利润: ￥${todayTotalProfit}">¥${totalProfit}(${totalProfitMargin}%)</span> | <b title="今日销售件数: ${todayTotalQuantity} | 销售商品件数: ${totalQuantity}">${data?.length ?? 0}</b>单`
+        statistics.innerHTML=`订单统计:(<span title="今日销售金额: ¥${todayTotalAmount} | 待结算: ¥${unsettledAmount}">¥${totalAmount}</span> - <span title="今日销售成本: ￥${todayTotalCostAmount} | 待结算成本: ¥${unsettledCostAmount}">¥${totalCostAmount}</span>)=<span title="今日利润: ¥${todayTotalProfit}">¥${totalProfit}(${totalProfitMargin}%)</span> | <b title="今日销售件数: ${todayTotalQuantity} | 销售商品件数: ${totalQuantity}">${data?.length ?? 0}</b>单`
     }
     // 获取订单数据
     function getOrdersData(init) {
