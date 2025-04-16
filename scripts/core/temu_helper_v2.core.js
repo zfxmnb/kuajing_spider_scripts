@@ -495,7 +495,7 @@ window.temu_helper_v2_core = async () => {
             todayTotalCostAmount += item['costPrice'] ?? 0
         })
         const format  = (num, noZero) => {
-            const result = `${numberFixed(num, 0)}`.replace(/^(\d+)(?=\d{4})/, '<b>$1</b>')
+            const result = `${numberFixed(num, 0)}`.replace(/^(\d+)(?=\d{4})/, '$1')
             return result === '0' && noZero ? '': result
         }
         const totalProfitMargin = totalCostAmount ? numberFixed(((totalAmount - totalCostAmount) / totalCostAmount) * 100, 0) : '-'
