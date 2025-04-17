@@ -766,6 +766,8 @@ window.temu_helper_v2_core = async () => {
         let pageItems = []
         let total = 1
         let page = 0
+        const now = Date.now();
+        const maxScope = checkoutDays * 86400000
         while (pageItems.length < total) {
             page += 1
             const result = await requestTemuOrders(pageType, page, scopeType, all)
@@ -775,7 +777,8 @@ window.temu_helper_v2_core = async () => {
                 if (!all) {
                     const last = pageItems[pageItems.length - 1]
                     const order = last ? formatTemuOrders([last], statusList)?.[0] ?? {} : {}
-                    if (order.createTime && (Date.now() - new Date(order.createTime).getTime()) > checkoutDays * 86400000 && currentOrderDataMap[order.id]) {
+                    const ts = order.createTs ?? new Date(order.createTime).getTime()
+                    if (order.createTime && (now - ts) > maxScope && currentOrderDataMap[order.id]) {
                         break;
                     }
                 }
@@ -1348,26 +1351,29 @@ window.temu_helper_v2_core = async () => {
         })
         const temu_orders_sync_cover = root.querySelector('#temu_orders_sync_cover')
         let clickTimer = null;
+        const orderSync = async (cd = 0) => {
+            temu_orders_sync_cover.classList.add('hide')
+            await getOrdersData()
+            const list = await getTemuOrders(0, [2, 4, 5], cd, false)
+            const cancelList = await getTemuOrders(3, [3], 6, false)
+            const listMap = arr2Map(list, 'id')
+            const cancelListMap = arr2Map(cancelList, 'id')
+            const oldList = []
+            currentOrderData.forEach((item) => {
+                if (item && !listMap[item.id] && !cancelListMap[item.id]) {
+                    oldList.push(item)
+                }
+            })
+            const orders = [...list, ...oldList]
+            await ordersDataPush(orders, { cover: true })
+            temu_orders_sync_cover.classList.remove('hide')
+        }
         temu_orders_sync_cover.addEventListener('click', async () => {
             if (clickTimer) return
             clickTimer = setTimeout(async () => {
                 clickTimer = null
                 if (confirm(`同步${checkoutDays}天订单数据，是否继续？`)) {
-                    temu_orders_sync_cover.classList.add('hide')
-                    await getOrdersData()
-                    const list = await getTemuOrders(0, [2, 4, 5], 0, false)
-                    const cancelList = await getTemuOrders(3, [3], 6, false)
-                    const listMap = arr2Map(list, 'id')
-                    const cancelListMap = arr2Map(cancelList, 'id')
-                    const oldList = []
-                    currentOrderData.forEach((item) => {
-                        if (item && !listMap[item.id] && !cancelListMap[item.id]) {
-                            oldList.push(item)
-                        }
-                    })
-                    const orders = [...list, ...oldList]
-                    await ordersDataPush(orders, { cover: true })
-                    temu_orders_sync_cover.classList.remove('hide')
+                    await orderSync()
                     alert('同步完成')
                 }
             }, 500)
@@ -1724,7 +1730,7 @@ window.temu_helper_v2_core = async () => {
         const pollingStatistics = async () => {
             const todayDate = new Date().toLocaleDateString()
             const prevLastDate = localStorage.getItem(statisticsNoticeKey)
-            await getOrdersData();
+            await orderSync(3);
             if (new Date().getHours() === 23 && todayDate !== prevLastDate) {
                 let todayTotalQuantity = 0
                 let todayTotalAmount = 0
@@ -1732,7 +1738,9 @@ window.temu_helper_v2_core = async () => {
                     todayTotalQuantity += item['quantity'] ?? 0
                     todayTotalAmount += item['price'] ?? 0
                 })
-                notice((Name ? `【${Name}】` : '') + '[今日统计]', `销售额: ¥${numberFixed(todayTotalAmount)}\n商品件数: ${todayTotalQuantity}`)
+                if (todayTotalQuantity) {
+                    notice((Name ? `【${Name}】` : '') + '[今日统计]', `销售额: ¥${numberFixed(todayTotalAmount)}\n商品件数: ${todayTotalQuantity}`)
+                }
                 localStorage.setItem(statisticsNoticeKey, todayDate)
             }
         }
