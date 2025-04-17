@@ -1730,8 +1730,8 @@ window.temu_helper_v2_core = async () => {
         const pollingStatistics = async () => {
             const todayDate = new Date().toLocaleDateString()
             const prevLastDate = localStorage.getItem(statisticsNoticeKey)
-            await orderSync(3);
             if (new Date().getHours() === 23 && todayDate !== prevLastDate) {
+                await orderSync(3);
                 let todayTotalQuantity = 0
                 let todayTotalAmount = 0
                 currentTodayOrderData?.forEach?.((item) => {
