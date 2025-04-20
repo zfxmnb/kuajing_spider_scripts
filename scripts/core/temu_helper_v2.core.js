@@ -1704,6 +1704,7 @@ window.temu_helper_v2_core = async () => {
             const prevLastTime = Number(localStorage.getItem(key)) || 0
             const now = Date.now()
             if ((now - prevLastTime - 3000) < chatPollingInterval) return
+            localStorage.setItem(key, now)
             const res = await fetch('/agora/conv/getBizConvList', {
                 method: 'POST',
                 headers: {
@@ -1724,13 +1725,14 @@ window.temu_helper_v2_core = async () => {
                 const min = Math.round((now - prevLastTime) / (60 * 1000))
                 notice((Name ? `【${Name}】` : '') + '[新客户消息]', `${min > 60 ? '': `最近${min}分钟内`}有${chats?.length}个待回复消息`)
             }
-            localStorage.setItem(key, now)
         }
         const statisticsNoticeKey = `${Name}__temu_statistics_notice_last_time__`
         const pollingStatistics = async () => {
-            const todayDate = new Date().toLocaleDateString()
+            const now = new Date()
+            const todayDate = now.toLocaleDateString()
             const prevLastDate = localStorage.getItem(statisticsNoticeKey)
-            if (new Date().getHours() === 23 && todayDate !== prevLastDate) {
+            if (now.getHours() === 23 && todayDate !== prevLastDate) {
+                localStorage.setItem(statisticsNoticeKey, todayDate)
                 await orderSync(3);
                 let todayTotalQuantity = 0
                 let todayTotalAmount = 0
@@ -1741,7 +1743,6 @@ window.temu_helper_v2_core = async () => {
                 if (todayTotalQuantity) {
                     notice((Name ? `【${Name}】` : '') + '[今日统计]', `销售额: ¥${numberFixed(todayTotalAmount)}\n商品件数: ${todayTotalQuantity}`)
                 }
-                localStorage.setItem(statisticsNoticeKey, todayDate)
             }
         }
         setExactInterval(async () => {
@@ -1757,6 +1758,17 @@ window.temu_helper_v2_core = async () => {
         setExactInterval(async () => {
             console.log('每日统计：', new Date().toLocaleString())
             pollingStatistics()
+        }, 60 * 60 * 1000)
+        const orderAutoSyncKey = `${Name}__temu_order_auto_sync_last_time__`
+        setExactInterval(async () => {
+            const now = new Date()
+            console.log('定时同步订单数据', now.toLocaleString())
+            const nowHourStr = now.toLocaleDateString() + '_' + now.getHours();
+            const prevLasthour = localStorage.getItem(orderAutoSyncKey)
+            if (nowHourStr !== prevLasthour) {
+                await orderSync(3);
+                localStorage.setItem(orderAutoSyncKey, nowHourStr)
+            }
         }, 60 * 60 * 1000)
         setExactInterval(() => {
             console.log('心跳检查：', new Date().toLocaleString())
@@ -1775,6 +1787,20 @@ window.temu_helper_v2_core = async () => {
             }, ReductionInterval)
         }
     }
+    const sellerInit = async () => {
+        const productAutoSyncKey = `${Name}__temu_product_auto_sync_last_time__`
+        setExactInterval(async () => {
+            const now = new Date()
+            console.log('定时同步商品数据', now.toLocaleString())
+            const nowHourStr = now.toLocaleDateString()
+            const prevLasthour = localStorage.getItem(productAutoSyncKey)
+            if (nowHourStr !== prevLasthour) {
+                await getProductsData()
+                await productsDataSync()
+                localStorage.setItem(productAutoSyncKey, todayDate)
+            }
+        }, 24 * 60 * 60 * 1000)
+    }
     (async () => {
         // 执行
         await getProductsData()
@@ -1785,6 +1811,9 @@ window.temu_helper_v2_core = async () => {
         if (agentSeller) {
             console.log('orderInit::')
             orderInit()
+        }
+        if (seller) {
+            sellerInit()
         }
     })()
 }
