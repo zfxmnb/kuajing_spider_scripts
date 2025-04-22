@@ -259,6 +259,7 @@ window.temu_helper_v2_core = async () => {
         d.setHours(0, 0, 0, 0)
         const todayFirst = d.getTime()
         const validStatusMap = {2: 1, 4: 1, 5: 1, '未发货': 1, '已发货': 1, '已完成': 1}
+        currentTodayOrderData = []
         currentOrderData.forEach((order) => {
             const ts = order.createTs ?? new Date(order.createTime).getTime();
             if (validStatusMap[order.orderStatus] && ts > todayFirst) {
@@ -1769,7 +1770,7 @@ window.temu_helper_v2_core = async () => {
                 await orderSync(3);
                 localStorage.setItem(orderAutoSyncKey, nowHourStr)
             }
-        }, 60 * 60 * 1000)
+        }, 2 * 60 * 60 * 1000)
         setExactInterval(() => {
             console.log('心跳检查：', new Date().toLocaleString())
         }, 60 * 1000)
