@@ -16,6 +16,8 @@ window.temu_helper_v2_core = async () => {
     }
     const Name = ConfigMap[mallId]?.Name || ConfigMap['default']?.Name || ""  // 本地服务端口
     const Port = ConfigMap[mallId]?.Port || ConfigMap['default']?.Port || 5431  // 本地服务端口
+    const User = ConfigMap[mallId]?.User || ConfigMap['default']?.User // 账号
+    const Password = ConfigMap[mallId]?.Password || ConfigMap['default']?.Password // 密码
     const Host = '127.0.0.1' // host
     const Origin = `http://${Host}:${Port}`
     const pollingInterval = 15 * 60 * 1000 + Math.round(Math.random() * 15 * 1000) // 轮询代发货订单及平台处理中订单
@@ -32,7 +34,30 @@ window.temu_helper_v2_core = async () => {
         3: '已取消',
     }
     const ReductionInterval = 0 // 30 * 60 * 1000 // 批量改价检查间隔，0则不检查
-
+    // 授权
+    if (window.location.pathname === '/main/authentication') {
+        setTimeout(() => {
+           document.documentElement.focus();
+           document.querySelector('[data-testid="beast-core-icon-right"]')?.parentElement?.click?.()
+        }, 2000)
+        return
+    }
+    // 登录
+    if (window.location.pathname === '/settle/seller-login') {
+        setTimeout(() => {
+            const checkbox = document.querySelector('[data-testid="beast-core-icon-check"]')?.parentElement?.previousElementSibling
+            if (!checkbox?.checked) {
+                document.querySelector('[data-testid="beast-core-icon-check"]')?.parentElement?.previousElementSibling?.click?.()
+            }
+            document.documentElement.focus();
+            document.querySelector('#usernameId')?.click?.()
+            document.querySelector('#usernameId')?.focus?.()
+            setTimeout(() => {
+                document.querySelector('[data-testid="beast-core-button"]')?.click?.()
+            }, 200)
+        }, 2000)
+        return
+    }
     async function excelLoad(excelUrl) {
         try {
             const response = await fetch(excelUrl);
@@ -300,6 +325,7 @@ window.temu_helper_v2_core = async () => {
             notice((Name ? `【${Name}】` : '') + '[登录异常]', `登录异常，可能影响订单推送，请检查(${logoutRequestCount})`)
             record.expire = now + 6 * 60 * 60 * 1000
             setCache(`${Name}__logoutNoticeRecord__`, record)
+            window.location.reload?.()
         }
     }
     // 获取商品数据
@@ -364,10 +390,12 @@ window.temu_helper_v2_core = async () => {
         })
         .then(response => response.json())
         .then((data) => {
-            if (!data?.result?.mmsPageVO) {
+            if (data.error_code == 40001 || !data?.result) {
                 console.error('/garen/mms/afterSales/queryReturnAndRefundPaList 接口请求失败', data)
                 // 登录异常通知
-                logoutNotice()
+                if (data.error_code == 40001) {
+                    logoutNotice()
+                }
                 return Promise.reject(data)
             }
             return data?.result?.mmsPageVO
@@ -710,9 +738,11 @@ window.temu_helper_v2_core = async () => {
         })
         .then(response => response.json())
         .then((data) => {
-            if (!data?.result) {
+            if (data.error_code == 40001 || !data?.result) {
                 console.error('/kirogi/bg/mms/recentOrderList 接口请求失败', data)
-                logoutNotice()
+                if (data.error_code == 40001) {
+                    logoutNotice()
+                }
                 return Promise.reject(data)
             }
             return data?.result
@@ -728,8 +758,8 @@ window.temu_helper_v2_core = async () => {
                 if (!statusList.includes(orderStatus)) return
                 productSkuIdList?.forEach((sku) => {
                     const id = `${orderSn}_${sku}`
-                    const siglePrice = currentDataMap[sku]?.price === '#' ? 0 : currentDataMap[sku]?.price ?? 0
-                    const price = currentOrderDataMap[id]?.price ?? (siglePrice ? numberFixed(siglePrice * quantity) : 0)
+                    const singlePrice = currentDataMap[sku]?.price === '#' ? 0 : currentDataMap[sku]?.price ?? 0
+                    const price = currentOrderDataMap[id]?.price ?? (singlePrice ? numberFixed(singlePrice * quantity) : 0)
                     const oldCostPrice = currentOrderDataMap[id]?.costPrice
                     const costPrice = price > 0 && !oldCostPrice ? (currentDataMap[sku]?.costPrice ? numberFixed(currentDataMap[sku]?.costPrice * quantity) : price) : oldCostPrice || 0
                     let profit = null
