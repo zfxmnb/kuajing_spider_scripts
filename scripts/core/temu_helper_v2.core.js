@@ -1521,16 +1521,22 @@ window.temu_helper_v2_core = async () => {
         }
         if (agentSeller) {
             temu_orders_sync_checkout.addEventListener('click', () => syncCheckout())
-            const key = `${Name}__temu_orders_sync_checkout_date__`
-            const temu_orders_sync_checkout_date = localStorage.getItem(key)
-            const date = new Date()
-            if (!temu_orders_sync_checkout_date && new Date(Number(temu_orders_sync_checkout_date) || null).toLocaleDateString() !== date.toLocaleDateString()) {
-                try {
-                    syncCheckout(true, () => {
-                        localStorage.setItem(key, date.getTime())
-                    })
-                }catch(err) {}
+            const autoSyncCheckout = () => {
+                const key = `${Name}__temu_orders_sync_checkout_date__`
+                const temu_orders_sync_checkout_date = localStorage.getItem(key)
+                const date = new Date()
+                if (!temu_orders_sync_checkout_date || new Date(Number(temu_orders_sync_checkout_date) || null).toLocaleDateString() !== date.toLocaleDateString()) {
+                    try {
+                        syncCheckout(true, () => {
+                            localStorage.setItem(key, date.getTime())
+                        })
+                    } catch(err) {}
+                }
             }
+            autoSyncCheckout();
+            setExactInterval(async () => {
+                autoSyncCheckout();
+            }, 24 * 60 * 60 * 1000)
         }
 
         document.body.addEventListener('click', async (e) => {
