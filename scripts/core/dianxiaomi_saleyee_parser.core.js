@@ -98,16 +98,25 @@ window.dianxiaomi_saleyee_parser_core = async () => {
         return data?.[0]?.map(([text] = []) => text)?.join?.('') ?? text;
     }
     let canUseGoogle = false
-    try {
-        const demoText = 'I love you'
-        translateText_google(demoText, 'zh-CN', 'en', 3000).then((text) => canUseGoogle = !!text && demoText !== text).catch(() => console.log('google 翻译不可用'))
-    } catch(err) {}
+    let checkedGooglePromise = null
+    
+    const checkGoogle = () => {
+        if (checkedGooglePromise) return checkedGooglePromise
+        try {
+            const demoText = 'I love you'
+            checkedGooglePromise = checkedGooglePromise || translateText_google(demoText, 'zh-CN', 'en', 3000).then((text) => { canUseGoogle = !!text && demoText !== text; return canUseGoogle}).catch(() => {console.log('google 翻译不可用')}).then(() =>  canUseGoogle)
+        } catch(err) {
+            return Promise.resolve(canUseGoogle)
+        }
+        return checkedGooglePromise
+    }
     const translateCache = {}
     const translateText = async (text, target, source = 'en', timeout = 5000) => {
         const cacheKey = `${source}_${target}`
         if (translateCache[cacheKey]?.[text]) return translateCache[cacheKey][text]
         let newText = text
         try {
+            canUseGoogle = await checkGoogle()
             newText = canUseGoogle ? (await translateText_google(text, target, source, timeout)) : (await translateText_mymemory(text, target, source, timeout))
             translateCache[cacheKey] = translateCache[cacheKey] || {}
             translateCache[cacheKey][text] = newText
@@ -125,10 +134,10 @@ window.dianxiaomi_saleyee_parser_core = async () => {
         productId: () => query('.choose_sku')?.nextElementSibling?.innerText?.replace(/spu[:：]\s*/ig, '') || null,
         skuId: () => query('.choose_sku')?.innerText?.replace(/sku[:：]\s*/ig, '') || null,
         currency: 'USD',
-        title: () => {
+        title: async () => {
             return query('.goods-tit .choose_h3').innerText || null
         },
-        title_CN: () => {
+        title_CN: async () => {
             return query('.goods-tit .chooseTitle').innerText || null
         },
         price: async () => {
