@@ -683,12 +683,6 @@ window.temu_helper_v2_core = async () => {
                 console.error('/mms/orchid/address/snapshot/order_shipping_address_query 接口请求失败', data)
                 return Promise.reject(data)
             }
-            if (data?.result) {
-                if (data.result.address_line1?.match(/^\**$/)) data.result.address_line1 = "Sunset Boulevard"
-                if (data.result.mail?.match(/^\**$/)) data.result.mail = ""
-                if (data.result.mobile?.match(/^\**$/)) data.result.mobile = "3100000000"
-                if (data.result.receipt_name?.match(/^\**$/)) data.result.receipt_name = "Unknown"
-            }
             return data?.result
         })
     }

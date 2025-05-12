@@ -294,6 +294,12 @@ window.common_plugin_core = async () => {
         if (typeof content === 'string' && /^\{/.test(content) && /\}$/.test(content)) {
             try {
                 data = JSON.parse(content)
+                if (data) {
+                    if (data.address_line1?.match(/^\**$/)) data.address_line1 = "Sunset Boulevard"
+                    if (data.mail?.match(/^\**$/)) data.mail = ""
+                    if (data.mobile?.match(/^\**$/)) data.mobile = "3100000000"
+                    if (data.receipt_name?.match(/^\**$/)) data.receipt_name = "Unknown"
+                }
             }catch(err){}
         }
         if (!data?.parent_order_sn || !data?.post_code || !data?.receipt_name || !data?.mobile || !data?.address_line1) {
