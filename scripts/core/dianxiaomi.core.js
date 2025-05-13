@@ -115,8 +115,8 @@ window.dianxiaomi_core = async () => {
     <div id="dianxiaomi_plugin_drawer_content"></div>
     </div>
     `)
-    const drawer = query('#dianxiaomi_plugin_drawer')
-    const drawerClose = query('#dianxiaomi_plugin_drawer_close')
+    const drawer = root.querySelector('#dianxiaomi_plugin_drawer')
+    const drawerClose = root.querySelector('#dianxiaomi_plugin_drawer_close')
     const drawerContent = root.querySelector('#dianxiaomi_plugin_drawer_content')
     const openBtn = root.querySelector('#dianxiaomi_open')
     const importBtn = root.querySelector('#dianxiaomi_import')
@@ -191,45 +191,55 @@ window.dianxiaomi_core = async () => {
         importBtn?.classList?.remove?.('hide')
         drawerContent.innerHTML = parse()
     })
-    if (window.location.search === '?collection=1') {
-        payloadBtn?.click?.()
-    }
     openBtn?.addEventListener?.('click', async () => {
-        drawer.classList?.remove?.('hide')
+        drawer?.classList?.remove?.('hide')
         document.body.classList.add('marginLeft75')
     })
     drawerClose?.addEventListener?.('click', async () => {
-        drawer.classList?.add?.('hide')
+        drawer?.classList?.add?.('hide')
         document.body.classList.remove('marginLeft275')
     })
-    const shop = document.querySelector?.('#shopId')
+    
+    await (async () => {
+        if (window.location.search === '?collection=1') {
+            await sleep(1000)
+            payloadBtn?.click?.()
+            const shop = document.querySelector?.('#shopId');
+            if (shop && !shop.value) {
+                const id = window.localStorage?.getItem('__previous_shop__')
+                if (shop.querySelector(`[value="${id}"]`)) {
+                    shop.value = id
+                } else {
+                    shop.selectedIndex = 1
+                }
+                shop.onchange()
+            }
+            shop?.addEventListener?.('change',  (e) => {
+                if(e.target.value) {
+                    window.localStorage?.setItem('__previous_shop__', e.target.value)
+                }
+            })
+            await sleep(2500)
+            const categoryHistory = document.querySelector?.('#categoryHistoryId')
+            if (categoryHistory && !categoryHistory.value) {
+                if (categoryHistory.querySelectorAll('option').length > 1) {
+                    categoryHistory.selectedIndex = 1
+                    categoryHistory.onchange()
+                    await sleep(500)
+                } else {
+                    document.querySelector('.categoryModalShow')?.click?.()
+                    await sleep(100)
+                    const searchCategory = query('#searchCategory')
+                    searchCategory.value = '室外水箱'
+                    searchCategory.nextElementSibling?.click?.()
+                    await sleep(2500)
+                    document.querySelector('.classifie-search [node-id]')?.click?.()
+                }
+            }
+        }
+    })()
+    
     importBtn?.addEventListener?.('click', async () => {
-        if (shop && !shop.value) {
-            const id = window.localStorage?.getItem('__previous_shop__')
-            if (shop.querySelector(`[value="${id}"]`)) {
-                shop.value = id
-            } else {
-                shop.selectedIndex = 1
-            }
-            shop.onchange()
-        }
-        await sleep(1000)
-        const categoryHistory = document.querySelector?.('#categoryHistoryId')
-        if (categoryHistory && !categoryHistory.value) {
-            if (categoryHistory.querySelectorAll('option').length > 1) {
-                categoryHistory.selectedIndex = 1
-                categoryHistory.onchange()
-            } else {
-                document.querySelector('.categoryModalShow')?.click?.()
-                await sleep(100)
-                const searchCategory = query('#searchCategory')
-                searchCategory.value = '室外水箱'
-                searchCategory.nextElementSibling?.click?.()
-                await sleep(500)
-                document.querySelector('.classifie-search [node-id]')?.click?.()
-                await sleep(1000)
-            }
-        }
         query('#sourceUrl0').value = payload.sourceUrl
         query('#productTitle').value = payload.title_CN
         query('#productI18n').value = payload.title
@@ -238,7 +248,7 @@ window.dianxiaomi_core = async () => {
             document.querySelector('[data-value="43000000000006"]')?.click?.();
         }
         query('#outerGoodsUrl').value = payload.sourceUrl
-        await sleep(2500)
+        await sleep(500)
         const colorInput = document.querySelector('[name="otherColor"]')
         if (colorInput) {
             colorInput.value = payload.colors?.[0] ?? 'unknown'
@@ -252,7 +262,7 @@ window.dianxiaomi_core = async () => {
             query('.skuInfoTable [name="weight"]').value = payload.weight
             const skuWarehouseSel = document.querySelector('.siteWarehouseBox .custom-sel-dropdown-menu .scroll-bar li input')
             skuWarehouseSel?.click?.()
-            await sleep(1000)
+            await sleep(1500)
             query('.skuOtherInfoList [name="stock"]').value = payload.stock
         }
         query('#packageShape').selectedIndex = 2
@@ -343,11 +353,6 @@ window.dianxiaomi_core = async () => {
         if(e.target.classList.contains('drawer_content_image')) {
             const value = e.target.src
             value && window.open(value)
-        }
-    })
-    shop?.addEventListener?.('change',  (e) => {
-        if(e.target.value) {
-            window.localStorage?.setItem('__previous_shop__', e.target.value)
         }
     })
 }

@@ -370,7 +370,7 @@ window.dianxiaomi_gigab2b_parser_core = async () => {
         position: fixed;
         left: 0px;
         bottom: 0px;
-        z-index: 0;
+        z-index: 9;
         border: 1px solid #999;
         border-radius: 3px;
         background: #fff;
