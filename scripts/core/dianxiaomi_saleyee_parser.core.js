@@ -1,5 +1,5 @@
 window.dianxiaomi_saleyee_parser_core = async () => {
-    console.log('dianxiaomi_saleyee_parser_core running')
+    console.log('dianxiaomi_saleyee_parser_core running', '202505121535')
     // const ServiceCharge = 0.15
     const ServiceCharge = 0
     function styles(content){

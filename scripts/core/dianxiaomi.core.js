@@ -1,5 +1,5 @@
 window.dianxiaomi_core = async () => {
-    console.log('dianxiaomi_core running')
+    console.log('dianxiaomi_core running', '202505121535')
     function styles(content){
         const style = document.createElement('style');
         style.innerText = content
