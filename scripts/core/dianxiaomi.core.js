@@ -175,7 +175,7 @@ window.dianxiaomi_core = async () => {
         })
         return html
     }
-    payloadBtn.addEventListener('click', async () => {
+    payloadBtn?.addEventListener?.('click', async () => {
         const content = await getClipboardContent()
         let data = content
         if (typeof content === 'string' && /^\{/.test(content) && /\}$/.test(content)) {
@@ -187,59 +187,79 @@ window.dianxiaomi_core = async () => {
             return
         }
         payload = data
-        openBtn.classList.remove('hide')
-        importBtn.classList.remove('hide')
+        openBtn?.classList?.remove?.('hide')
+        importBtn?.classList?.remove?.('hide')
         drawerContent.innerHTML = parse()
     })
     if (window.location.search === '?collection=1') {
-        payloadBtn.click()
+        payloadBtn?.click?.()
     }
-    openBtn.addEventListener('click', async () => {
-        drawer.classList.remove('hide')
+    openBtn?.addEventListener?.('click', async () => {
+        drawer.classList?.remove?.('hide')
         document.body.classList.add('marginLeft75')
     })
-    drawerClose.addEventListener('click', async () => {
-        drawer.classList.add('hide')
+    drawerClose?.addEventListener?.('click', async () => {
+        drawer.classList?.add?.('hide')
         document.body.classList.remove('marginLeft275')
     })
-    importBtn.addEventListener('click', async () => {
-        const shop = query('#shopId')
-        if (!shop.value) {
-            shop.selectedIndex = 1
+    const shop = document.querySelector?.('#shopId')
+    importBtn?.addEventListener?.('click', async () => {
+        if (shop && !shop.value) {
+            const id = window.localStorage?.getItem('__previous_shop__')
+            if (shop.querySelector(`[value="${id}"]`)) {
+                shop.value = id
+            } else {
+                shop.selectedIndex = 1
+            }
             shop.onchange()
         }
         await sleep(1000)
-        const categoryHistory = query('#categoryHistoryId')
-        if (categoryHistory) {
-            categoryHistory.selectedIndex = 1
-            categoryHistory.onchange()
+        const categoryHistory = document.querySelector?.('#categoryHistoryId')
+        if (categoryHistory && !categoryHistory.value) {
+            if (categoryHistory.querySelectorAll('option').length > 1) {
+                categoryHistory.selectedIndex = 1
+                categoryHistory.onchange()
+            } else {
+                document.querySelector('.categoryModalShow')?.click?.()
+                await sleep(100)
+                const searchCategory = query('#searchCategory')
+                searchCategory.value = '室外水箱'
+                searchCategory.nextElementSibling?.click?.()
+                await sleep(500)
+                document.querySelector('.classifie-search [node-id]')?.click?.()
+                await sleep(1000)
+            }
         }
         query('#sourceUrl0').value = payload.sourceUrl
         query('#productTitle').value = payload.title_CN
         query('#productI18n').value = payload.title
         query('#productNumber').value = payload.skuId
+        if (!document.querySelector('[placeholder="请选择省份"]')?.value) {
+            document.querySelector('[data-value="43000000000006"]')?.click?.();
+        }
         query('#outerGoodsUrl').value = payload.sourceUrl
-        await sleep(1000)
-        const colorInput = query('[name="otherColor"]')
+        await sleep(2500)
+        const colorInput = document.querySelector('[name="otherColor"]')
         if (colorInput) {
             colorInput.value = payload.colors?.[0] ?? 'unknown'
+            sleep(500)
             colorInput.nextElementSibling.click()
-            sleep(200)
+            sleep(500)
             query('.skuInfoTable [name="price"]').value = payload.price_CNY
             query('.skuInfoTable [name="skuLength"]').value = payload.size?.[0]
             query('.skuInfoTable [name="skuWidth"]').value = payload.size?.[1]
             query('.skuInfoTable [name="skuHeight"]').value = payload.size?.[2]
             query('.skuInfoTable [name="weight"]').value = payload.weight
-            const skuWarehouseSel = query('.siteWarehouseBox .custom-sel-dropdown-menu .scroll-bar li input')
-            skuWarehouseSel.click()
+            const skuWarehouseSel = document.querySelector('.siteWarehouseBox .custom-sel-dropdown-menu .scroll-bar li input')
+            skuWarehouseSel?.click?.()
             await sleep(1000)
             query('.skuOtherInfoList [name="stock"]').value = payload.stock
         }
         query('#packageShape').selectedIndex = 2
         query('#packageType').selectedIndex = 1
-        query('.product-info-module-content [name="deliveryTime"][value="172800"]')?.click()
-        query('#freightTemplateBox .menuListLi:last-child')?.click()
-        const wirelessDescBox = query('#wirelessDescContentBox')
+        document.querySelector('.product-info-module-content [name="deliveryTime"][value="172800"]')?.click?.()
+        document.querySelector('#freightTemplateBox .menuListLi:last-child')?.click?.()
+        const wirelessDescBox = document.querySelector('#wirelessDescContentBox')
         if (wirelessDescBox) {
             const list = []
             payload.description?.forEach?.((text) => {
@@ -270,23 +290,43 @@ window.dianxiaomi_core = async () => {
             window.POP_TEMU_PRODUCT_FN?.descriptionFn?.modalShow?.();
             window.DESCRIPTION_EDITOR?.modalSave?.();
         }
-        window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.proNetworkImgShow?.();
-        let netImgUrl = query('#netImgUrl')
-        // https://img.myshopline.com/image/official/477168e554ab409cad55a46005699cf1.jpeg
+        await sleep(100)
+        let netImgUrl = document.querySelector('#netImgUrl')
+        if (!document.querySelector('#myjPackageDrop li')) {
+            window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.proNetworkImgShow?.('productPackageImg');
+            netImgUrl = document.querySelector('#netImgUrl')
+            // https://img.myshopline.com/image/official/477168e554ab409cad55a46005699cf1.jpeg
+            if (netImgUrl) {
+                netImgUrl.value = 'https://img.myshopline.com/image/official/477168e554ab409cad55a46005699cf1.jpeg'
+                window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.proNetworkImgConfirm?.();
+            }
+        }
+        await sleep(100)
+        window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.uploadImg?.(2, document.querySelector('#skuInfoTable .tuiImageEditorBox'));
+        let netImgUrl2 = document.querySelector('#netImgUrl2')
+        if (netImgUrl2) {
+            netImgUrl2.value = payload?.images?.[0]
+            window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.downImgFromUrl2?.();
+            window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.proNetworkImgShow?.();
+        }
+        await sleep(100)
         if (netImgUrl) {
             netImgUrl.value = (payload?.images?.slice(0, 10) ?? []).join('\n');
+            window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.clearImage?.()
             window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.proNetworkImgConfirm?.();
-        }
-
-        window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.proNetworkImgShow?.('productPackageImg');
-        netImgUrl = query('#netImgUrl')
-        // https://img.myshopline.com/image/official/477168e554ab409cad55a46005699cf1.jpeg
-        if (netImgUrl) {
-            netImgUrl.value = 'https://img.myshopline.com/image/official/477168e554ab409cad55a46005699cf1.jpeg'
-            window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.proNetworkImgConfirm?.();
+            await sleep(3000);
+            window.IMGRESIZE?.modalBuild?.('resizeOut', window.POP_TEMU_PRODUCT_FN?.skuFn?.resizecall, 'popTemu');
+            await sleep(3000);
+            const setlen = document.querySelector('#imgResize [name="setlen"]')
+            if (setlen) {
+                if (!setlen.value) {
+                    setlen.value = 800
+                }
+                window.IMGRESIZE?.beforeResize?.(document.querySelector('#imageScaleSelect')?.nextElementSibling, true, 'jpeg');
+            }
         }
     })
-    drawerContent.addEventListener('click', async (e) => {
+    drawerContent?.addEventListener?.('click', async (e) => {
         if(e.target.classList.contains('drawer_content_copy')) {
             const index = e.target.dataset.index
             if(Number(index) > -1){
@@ -299,10 +339,15 @@ window.dianxiaomi_core = async () => {
             value && copyToClipboard(value instanceof Array ? value.join('\n'): value)
         }
     })
-    drawerContent.addEventListener('dblclick', async (e) => {
+    drawerContent?.addEventListener?.('dblclick', async (e) => {
         if(e.target.classList.contains('drawer_content_image')) {
             const value = e.target.src
             value && window.open(value)
+        }
+    })
+    shop?.addEventListener?.('change',  (e) => {
+        if(e.target.value) {
+            window.localStorage?.setItem('__previous_shop__', e.target.value)
         }
     })
 }

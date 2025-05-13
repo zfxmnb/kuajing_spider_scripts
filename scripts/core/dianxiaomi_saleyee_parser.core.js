@@ -138,7 +138,7 @@ window.dianxiaomi_saleyee_parser_core = async () => {
             return query('.goods-tit .choose_h3').innerText || null
         },
         title_CN: async () => {
-            return query('.goods-tit .chooseTitle').innerText || null
+            return query('.goods-tit .chooseTitle')?.innerText?.replace(/[\(（\[【][\u4e00-\u9fa5a-z\s]+[\)）\]】]/ig, '') || null
         },
         price: async () => {
             const [_, symbol, num] = query('.products_information .currPrice')?.innerText?.trim()?.match(/([a-z]+)\s*([0-9.]+)/i) ?? []
