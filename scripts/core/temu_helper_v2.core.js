@@ -1,5 +1,5 @@
 window.temu_helper_v2_core = async () => {
-    console.log('temu_helper_v2_core running', '202505121535')
+    console.log('temu_helper_v2_core running', '202505121702')
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
@@ -1195,7 +1195,7 @@ window.temu_helper_v2_core = async () => {
     }
     function update() {
         productUpdate()
-        if (window.location.pathname === '/mmsos/orders.html') {
+        if (agentSeller) {
             orderUpdate()
         }
     }
