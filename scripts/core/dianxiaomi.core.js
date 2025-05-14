@@ -248,11 +248,11 @@ window.dianxiaomi_core = async () => {
             document.querySelector('[data-value="43000000000006"]')?.click?.();
         }
         query('#outerGoodsUrl').value = payload.sourceUrl
-        await sleep(500)
+        await sleep(100)
         const colorInput = document.querySelector('[name="otherColor"]')
         if (colorInput) {
             colorInput.value = payload.colors?.[0] ?? 'unknown'
-            sleep(500)
+            sleep(100)
             colorInput.nextElementSibling.click()
             sleep(500)
             query('.skuInfoTable [name="price"]').value = payload.price_CNY
@@ -260,9 +260,11 @@ window.dianxiaomi_core = async () => {
             query('.skuInfoTable [name="skuWidth"]').value = payload.size?.[1]
             query('.skuInfoTable [name="skuHeight"]').value = payload.size?.[2]
             query('.skuInfoTable [name="weight"]').value = payload.weight
-            const skuWarehouseSel = document.querySelector('.siteWarehouseBox .custom-sel-dropdown-menu .scroll-bar li input')
-            skuWarehouseSel?.click?.()
-            await sleep(1500)
+            if (!document.querySelector('.siteWarehouseBox .customSelEntiretyModule .tagOutState')) {
+                const skuWarehouseSel = document.querySelector('.siteWarehouseBox .custom-sel-dropdown-menu .scroll-bar li input')
+                skuWarehouseSel?.click?.()
+            }
+            await sleep(100)
             query('.skuOtherInfoList [name="stock"]').value = payload.stock
         }
         query('#packageShape').selectedIndex = 2
@@ -312,30 +314,51 @@ window.dianxiaomi_core = async () => {
             }
         }
         await sleep(100)
-        window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.uploadImg?.(2, document.querySelector('#skuInfoTable .tuiImageEditorBox'));
-        let netImgUrl2 = document.querySelector('#netImgUrl2')
-        if (netImgUrl2) {
-            netImgUrl2.value = payload?.images?.[0]
-            window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.downImgFromUrl2?.();
-            window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.proNetworkImgShow?.();
-        }
-        await sleep(100)
+        // window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.uploadImg?.(2, document.querySelector('#skuInfoTable .tuiImageEditorBox'));
+        // let netImgUrl2 = document.querySelector('#netImgUrl2')
+        // if (netImgUrl2) {
+        //     netImgUrl2.value = payload?.images?.[0]
+        //     window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.downImgFromUrl2?.();
+        //     window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.proNetworkImgShow?.();
+        // }
+        // await sleep(100)
         if (netImgUrl) {
             netImgUrl.value = (payload?.images?.slice(0, 10) ?? []).join('\n');
             window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.clearImage?.()
             window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.proNetworkImgConfirm?.();
-            await sleep(3000);
+            await sleep(100);
             window.IMGRESIZE?.modalBuild?.('resizeOut', window.POP_TEMU_PRODUCT_FN?.skuFn?.resizecall, 'popTemu');
-            await sleep(3000);
+            await sleep(2500);
             const setlen = document.querySelector('#imgResize [name="setlen"]')
             if (setlen) {
-                if (!setlen.value) {
-                    setlen.value = 800
+                if (!setlen.value) { setlen.value = 800 }
+                const remenberSettings = document.querySelector('#imgResize [name="remenberSettings"]')
+                if (!remenberSettings.checked) {
+                    remenberSettings.click()
                 }
                 window.IMGRESIZE?.beforeResize?.(document.querySelector('#imageScaleSelect')?.nextElementSibling, true, 'jpeg');
             }
         }
     })
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(async e => {
+            if (!e.isIntersecting) {
+                if (document.querySelector('#skuInfoTable .removeSkuImgBtn.hide')) {
+                    window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.uploadImg?.(6, document.querySelector('#skuInfoTable .tuiImageEditorBox'));
+                    const quoteImageModal = document.querySelector('#quoteImageModal')
+                    await sleep(100);
+                    const quoteImg0 = quoteImageModal.querySelector('#quoteImg0 label')
+                    if (quoteImg0) {
+                        quoteImageModal.querySelector('#quoteImg0 label')?.click?.()
+                        await sleep(100);
+                        PRODUCT_QUOTE_IMG.quoteImageConfirm();
+                    }
+                }
+            }
+        });
+    });
+    observer.observe(document.querySelector('#imgResize'));
+
     drawerContent?.addEventListener?.('click', async (e) => {
         if(e.target.classList.contains('drawer_content_copy')) {
             const index = e.target.dataset.index
