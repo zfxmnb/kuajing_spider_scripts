@@ -323,7 +323,21 @@ window.dianxiaomi_core = async () => {
         // }
         // await sleep(100)
         if (netImgUrl) {
-            netImgUrl.value = (payload?.images?.slice(0, 10) ?? []).join('\n');
+            const detail_images = payload?.detail_images ?? []
+            let list = [...(payload?.images ?? [])]
+            if (list.length > 10) {list = [...list.slice(0, 7)].concat(list.length > 3 ? list.slice(-3) : [])}
+            if (list.length < 10 && detail_images.length) {
+                const m = {}
+                list.forEach((img) => {m[img] = true})
+                for (let i = 0; i < detail_images.length; i++) {
+                    const img = detail_images[i]
+                    if (!img || m[img]) continue
+                    list.push(img)
+                    m[img] = true
+                    if (list.length >= 10) break
+                }
+            }
+            netImgUrl.value = list.join('\n');
             window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.clearImage?.()
             window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.proNetworkImgConfirm?.();
             await sleep(100);
