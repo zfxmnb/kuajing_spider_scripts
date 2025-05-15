@@ -10,6 +10,7 @@
 // @match        https://us.goodcang.com/*
 // @match        https://cnuser.returnhelper.com.hk/*
 // @match        https://cnuser.returnhelper.com/*
+// @match        https://oms.xlwms.com/*
 // @grant        GM_xmlhttpRequest
 // @require      https://ghfast.top/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/common_plugin.core.js
 // ==/UserScript==

@@ -345,9 +345,7 @@ window.common_plugin_core = async () => {
     let isCheckPage = false
     document.body.addEventListener('mousemove', debounce(() => {
         if (checkoutUrls.some((url) => window.location.href.includes(url))) {
-            if (!isCheckPage) {
-                setTimeout(() => {document.hasFocus(); handle()}, 1000)
-            }
+            if (!isCheckPage) {setTimeout(() => {document.hasFocus(); handle()}, 1000)}
             app.classList.remove('hide')
             isCheckPage = true
         } else {
@@ -357,7 +355,9 @@ window.common_plugin_core = async () => {
     }))
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' && checkoutUrls.some((url) => window.location.href.includes(url))) {
-            document.hasFocus(); handle()
+            setTimeout(() => {
+                document.hasFocus(); handle()
+            }, 1000)
         } 
     })
     app.addEventListener('click', async (e) => {
