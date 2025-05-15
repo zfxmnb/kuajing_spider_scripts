@@ -1,11 +1,15 @@
 window.common_plugin_core = async () => {
     console.log('common_plugin_core running', '202505121535')
-    const matchDomains = ['www.gigab2b.com', 'www.saleyee.cn', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'returnhelper.com']
+    const matchDomains = ['www.gigab2b.com', 'www.saleyee.cn', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'returnhelper.com', 'oms.xlwms.com']
+    // 一下内容在指定域名下生效
+    if (!matchDomains.includes(window.location.host)) {return}
+
     const saleCheckout = 'https://www.saleyee.cn/user/order/confirm.html'
     const gigab2bCheckout = 'https://www.gigab2b.com/index.php?route=account/sales_order/sales_order_management'
     const topwmsCheckout = 'https://xhl.topwms.com/manual_order/index'
     const goodcangCheckout = 'https://us.goodcang.com/order/add'
-    const checkoutUrls = [saleCheckout, gigab2bCheckout, topwmsCheckout, goodcangCheckout]
+    const xlwmsCheckout = 'https://oms.xlwms.com/warehouse/packet/create'
+    const checkoutUrls = [saleCheckout, gigab2bCheckout, topwmsCheckout, goodcangCheckout, xlwmsCheckout]
     const addressConfigs = {
         'United States': {
             value: '1',
@@ -73,11 +77,6 @@ window.common_plugin_core = async () => {
                 "WY": "62"
             }
         }
-    }
-    // 
-    // 一下内容在指定域名下生效
-    if (!matchDomains.includes(window.location.host)) {
-        return
     }
     // const ServiceCharge = 0.15
     const ServiceCharge = 0
@@ -200,7 +199,6 @@ window.common_plugin_core = async () => {
         return div
     }
     async function getClipboardContent() {
-        //return Promise.resolve(mockData)
         try {
             return await navigator.clipboard.readText();
         } catch (err) {
@@ -307,13 +305,9 @@ window.common_plugin_core = async () => {
         }
         return data
     }
-    let readed = false
      const handle = async () => {
         const data = await getData()
-        if (!data) {
-            return
-        }
-        readed = true
+        if (!data) {return}
         app.classList.remove('hide')
         app.dataSource = data
         let html = ''
@@ -348,127 +342,126 @@ window.common_plugin_core = async () => {
             }
         }, 1500)
     }
-    if (checkoutUrls.some((url) => window.location.href.includes(url))) {
-        setTimeout(() => {
-            if(document.hasFocus()) {
-                handle()
+    let isCheckPage = false
+    document.body.addEventListener('mousemove', debounce(() => {
+        if (checkoutUrls.some((url) => window.location.href.includes(url))) {
+            if (!isCheckPage) {
+                setTimeout(() => {document.hasFocus(); handle()}, 1000)
             }
-        }, 1500)
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-                document.hasFocus() && handle()
-            } 
-        })
-        app.addEventListener('click', async (e) => {
-            if(e.target.classList.contains('addr_item_value')) {
-                copyToClipboard(e.target.innerText)
+            app.classList.remove('hide')
+            isCheckPage = true
+        } else {
+            isCheckPage = false
+            app.classList.add('hide')
+        }
+    }))
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && checkoutUrls.some((url) => window.location.href.includes(url))) {
+            document.hasFocus(); handle()
+        } 
+    })
+    app.addEventListener('click', async (e) => {
+        if(e.target.classList.contains('addr_item_value')) {copyToClipboard(e.target.innerText)}
+    })
+    app.addEventListener('click', async (e) => {
+        if(e.target.closest('.sale_checkout_import')) {
+            const ca = document.body.querySelector('.choose_address_container')
+            const data = app.dataSource
+            if (ca && data) {
+                ca.querySelector('#OrderConfirmFullName').value = data?.receipt_name || ''
+                ca.querySelector('#OrderConfirmPhoneNumber').value = data?.mobile || ''
+                ca.querySelector('#OrderConfirmEmail').value = data?.email || ''
+                ca.querySelector('#OrderConfirmAddress1').value = data?.address_line1 || ''
+                ca.querySelector('#OrderConfirmAddress2').value = data?.address_line2 || ''
+                const countryId = addressConfigs[data?.region_name1]?.value || '1'
+                ca.querySelector('#OrderConfirmCountryId').nextElementSibling.querySelector(`dd[lay-value="${countryId}"]`).click()
+                const sateProvinceId = addressConfigs[data?.region_name1]?.children?.[data?.region_name2]
+                await new Promise((r) => setTimeout(r, 1500))
+                ca.querySelector('#OrderConfirmStateProvinceId').nextElementSibling.querySelector(`dd[lay-value="${sateProvinceId}"]`).click()
+                ca.querySelector('#OrderConfirmCity').value = data?.region_name3
+                ca.querySelector('#OrderConfirmZipPostalCode').value = data?.post_code
+                ca.querySelector('.save_address_container button').click()
             }
-        })
-        app.addEventListener('click', async (e) => {
-            if(e.target.closest('.sale_checkout_import')) {
-                const ca = document.body.querySelector('.choose_address_container')
-                const data = app.dataSource
-                if (ca && data) {
-                    ca.querySelector('#OrderConfirmFullName').value = data?.receipt_name || ''
-                    ca.querySelector('#OrderConfirmPhoneNumber').value = data?.mobile || ''
-                    ca.querySelector('#OrderConfirmEmail').value = data?.email || ''
-                    ca.querySelector('#OrderConfirmAddress1').value = data?.address_line1 || ''
-                    ca.querySelector('#OrderConfirmAddress2').value = data?.address_line2 || ''
-                    const countryId = addressConfigs[data?.region_name1]?.value || '1'
-                    ca.querySelector('#OrderConfirmCountryId').nextElementSibling.querySelector(`dd[lay-value="${countryId}"]`).click()
-                    const sateProvinceId = addressConfigs[data?.region_name1]?.children?.[data?.region_name2]
-                    await new Promise((r) => setTimeout(r, 1500))
-                    ca.querySelector('#OrderConfirmStateProvinceId').nextElementSibling.querySelector(`dd[lay-value="${sateProvinceId}"]`).click()
-                    ca.querySelector('#OrderConfirmCity').value = data?.region_name3
-                    ca.querySelector('#OrderConfirmZipPostalCode').value = data?.post_code
-                    ca.querySelector('.save_address_container button').click()
-                }
+        }
+        if(e.target.closest('.topwms_checkout_import')) {
+            const data = app.dataSource
+            if (data) {
+                const orderSnEle = document.querySelector('[placeholder="若不填写，将自动生成订单号"]')
+                orderSnEle.value = data?.parent_order_sn || ''
+                orderSnEle.dispatchEvent(inputEvent)
+
+                const receiptNameEle = document.querySelector('[placeholder="请输入收件人姓名"]')
+                receiptNameEle.value = data?.receipt_name || ''
+                receiptNameEle.dispatchEvent(inputEvent)
+
+                const mobileEle = document.querySelector('[placeholder="请输入联系电话"]')
+                mobileEle.value = data?.mobile || ''
+                mobileEle.dispatchEvent(inputEvent)
+
+                document.querySelector('[placeholder="请选择国家/地区"]').click()
+                await new Promise((r) => setTimeout(r, 1000))
+                document.querySelector('[role="dialog"][aria-label="已选择国家/地区"] [type="radio"][value="15"]').click()
+                await new Promise((r) => setTimeout(r, 1000))
+                document.querySelector('[role="dialog"][aria-label="已选择国家/地区"] .jx-dialog__footer button.jx-button--primary').click()
+
+                const regionName2Ele = document.querySelector('[placeholder="请输入省/州"]')
+                regionName2Ele.value = data?.region_name2 || ''
+                regionName2Ele.dispatchEvent(inputEvent)
+
+                const regionName3Ele = document.querySelector('[placeholder="请输入城市"]')
+                regionName3Ele.value = data?.region_name3 || ''
+                regionName3Ele.dispatchEvent(inputEvent)
+
+                const postCodeEle = document.querySelector('[placeholder="请输入邮编"]')
+                postCodeEle.value = data?.post_code || ''
+                postCodeEle.dispatchEvent(inputEvent)
+
+                const addressEle = document.querySelector('[placeholder="请输入详细地址"]')
+                addressEle.value = (data?.address_line1 || '') + (data?.address_line2 ? `,${data?.address_line2}` : '')
+                addressEle.dispatchEvent(inputEvent)
             }
-            if(e.target.closest('.topwms_checkout_import')) {
-                const data = app.dataSource
-                if (data) {
-                    const orderSnEle = document.querySelector('[placeholder="若不填写，将自动生成订单号"]')
-                    orderSnEle.value = data?.parent_order_sn || ''
-                    orderSnEle.dispatchEvent(inputEvent)
+        }
+        if(e.target.closest('.goodcang_checkout_import')) {
+            const data = app.dataSource
+            if (data) {
+                await new Promise((r) => setTimeout(r, 1))
+                const ca = document.querySelector('[data-sign="outbound_order_fba_address"]')
+                const receiptNameEle = ca.querySelector('[data-sign="address.consignee_name"]')?.querySelector('input')
+                receiptNameEle.value = data?.receipt_name || ''
+                receiptNameEle.dispatchEvent(inputEvent)
 
-                    const receiptNameEle = document.querySelector('[placeholder="请输入收件人姓名"]')
-                    receiptNameEle.value = data?.receipt_name || ''
-                    receiptNameEle.dispatchEvent(inputEvent)
+                findElementsByText('US[美国]', document.querySelector('[title="常用国家/地区"]')?.nextElementSibling)?.[0]?.click?.()
+                
+                const regionName2Ele = ca.querySelector('[data-sign="address.state"]')?.querySelector('input')
+                regionName2Ele.value = data?.region_name2 || ''
+                regionName2Ele.dispatchEvent(inputEvent)
+                
+                const regionName3Ele = ca.querySelector('[data-sign="address.city"]')?.querySelector('input')
+                regionName3Ele.value = data?.region_name3 || ''
+                regionName3Ele.dispatchEvent(inputEvent)
+                
+                const postCodeEle = ca.querySelector('[data-sign="address.post_code"]')?.querySelector('input')
+                postCodeEle.value = data?.post_code || ''
+                postCodeEle.dispatchEvent(inputEvent)
 
-                    const mobileEle = document.querySelector('[placeholder="请输入联系电话"]')
-                    mobileEle.value = data?.mobile || ''
-                    mobileEle.dispatchEvent(inputEvent)
+                const address1Ele = ca.querySelector('[data-sign="address.street1"]')?.querySelector('input')
+                address1Ele.value = data?.address_line1 || ''
+                address1Ele.dispatchEvent(inputEvent)
 
-                    document.querySelector('[placeholder="请选择国家/地区"]').click()
-                    await new Promise((r) => setTimeout(r, 1000))
-                    document.querySelector('[role="dialog"][aria-label="已选择国家/地区"] [type="radio"][value="15"]').click()
-                    await new Promise((r) => setTimeout(r, 1000))
-                    document.querySelector('[role="dialog"][aria-label="已选择国家/地区"] .jx-dialog__footer button.jx-button--primary').click()
+                const address2Ele = ca.querySelector('[data-sign="address.street2"]')?.querySelector('input')
+                address2Ele.value = data?.address_line2 || ''
+                address2Ele.dispatchEvent(inputEvent)
 
-                    const regionName2Ele = document.querySelector('[placeholder="请输入省/州"]')
-                    regionName2Ele.value = data?.region_name2 || ''
-                    regionName2Ele.dispatchEvent(inputEvent)
+                const mobilePrefix = ca.querySelector('[data-sign="address.phone"]')?.querySelector('.ant-select-selection__rendered input')
+                mobilePrefix.dispatchEvent(clickEvent)
+                await new Promise((r) => setTimeout(r, 1000))
+                findElementsByText('1-US')?.[0]?.click?.()
 
-                    const regionName3Ele = document.querySelector('[placeholder="请输入城市"]')
-                    regionName3Ele.value = data?.region_name3 || ''
-                    regionName3Ele.dispatchEvent(inputEvent)
+                const mobileEle = ca.querySelector('[data-sign="address.phone"]')?.querySelector('.show-char-num-text input')
+                mobileEle.value = data?.mobile || ''
+                mobileEle.dispatchEvent(inputEvent)
 
-                    const postCodeEle = document.querySelector('[placeholder="请输入邮编"]')
-                    postCodeEle.value = data?.post_code || ''
-                    postCodeEle.dispatchEvent(inputEvent)
-
-                    const addressEle = document.querySelector('[placeholder="请输入详细地址"]')
-                    addressEle.value = (data?.address_line1 || '') + (data?.address_line2 ? `,${data?.address_line2}` : '')
-                    addressEle.dispatchEvent(inputEvent)
-                }
             }
-            if(e.target.closest('.goodcang_checkout_import')) {
-                const data = app.dataSource
-                if (data) {
-                    await new Promise((r) => setTimeout(r, 1))
-                    const ca = document.querySelector('[data-sign="outbound_order_fba_address"]')
-                    const receiptNameEle = ca.querySelector('[data-sign="address.consignee_name"]')?.querySelector('input')
-                    receiptNameEle.value = data?.receipt_name || ''
-                    receiptNameEle.dispatchEvent(inputEvent)
-
-                    findElementsByText('US[美国]', document.querySelector('[title="常用国家/地区"]')?.nextElementSibling)?.[0]?.click?.()
-                    
-                    const regionName2Ele = ca.querySelector('[data-sign="address.state"]')?.querySelector('input')
-                    regionName2Ele.value = data?.region_name2 || ''
-                    regionName2Ele.dispatchEvent(inputEvent)
-                    
-                    const regionName3Ele = ca.querySelector('[data-sign="address.city"]')?.querySelector('input')
-                    regionName3Ele.value = data?.region_name3 || ''
-                    regionName3Ele.dispatchEvent(inputEvent)
-                    
-                    const postCodeEle = ca.querySelector('[data-sign="address.post_code"]')?.querySelector('input')
-                    postCodeEle.value = data?.post_code || ''
-                    postCodeEle.dispatchEvent(inputEvent)
-
-                    const address1Ele = ca.querySelector('[data-sign="address.street1"]')?.querySelector('input')
-                    address1Ele.value = data?.address_line1 || ''
-                    address1Ele.dispatchEvent(inputEvent)
-
-                    const address2Ele = ca.querySelector('[data-sign="address.street2"]')?.querySelector('input')
-                    address2Ele.value = data?.address_line2 || ''
-                    address2Ele.dispatchEvent(inputEvent)
-
-                    const mobilePrefix = ca.querySelector('[data-sign="address.phone"]')?.querySelector('.ant-select-selection__rendered input')
-                    mobilePrefix.dispatchEvent(clickEvent)
-                    await new Promise((r) => setTimeout(r, 1000))
-                    findElementsByText('1-US')?.[0]?.click?.()
-
-                    const mobileEle = ca.querySelector('[data-sign="address.phone"]')?.querySelector('.show-char-num-text input')
-                    mobileEle.value = data?.mobile || ''
-                    mobileEle.dispatchEvent(inputEvent)
-
-                }
-            }
-        })
-        document.body.addEventListener('click', (e) => {
-            if(!readed) {
-                handle()
-            }
-        })
-    }
+        }
+    })
 }
