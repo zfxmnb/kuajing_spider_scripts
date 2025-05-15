@@ -1,5 +1,5 @@
 window.dianxiaomi_core = async () => {
-    console.log('dianxiaomi_core running', '202505121849')
+    console.log('dianxiaomi_core_v2 running', '202505151526')
     function styles(content){
         const style = document.createElement('style');
         style.innerText = content
@@ -17,8 +17,25 @@ window.dianxiaomi_core = async () => {
             setTimeout(resolve, t)
         })
     }
+    async function polling (fn, t = 100, max = 5000) {
+        return new Promise((resolve) => {
+            let finished = false
+            const t = setInterval(() => {
+                if (fn?.()) {
+                    finished = true
+                    clearInterval(t)
+                    resolve()
+                }
+            }, t)
+            setTimeout(() => {
+                if (!finished) {
+                    clearInterval(t)
+                    resolve()
+                }
+            }, max)
+        })
+    }
     async function getClipboardContent() {
-        //return Promise.resolve(mockData)
         try {
             return await navigator.clipboard.readText();
         } catch (err) {
@@ -33,8 +50,72 @@ window.dianxiaomi_core = async () => {
             console.error('Failed to copy text: ', err);
         }
     }
-    const queryAll = (...args) => document.querySelectorAll(...args)
-    const query = (...args) => document.querySelector(...args) ?? {}
+    const mousedownEvent = new Event('mousedown');
+    const mouseenterEvent = new Event('mouseenter');
+    const mouseleaveEvent = new Event('mouseleave');
+    const changeEvent = new Event('change');
+    const inputEvent = new Event('input');
+    const setInput = (selector, value) => {
+        const ele = selector instanceof Element ? selector : document.querySelector(selector)
+        if (ele) {
+            ele.value = value
+            ele.dispatchEvent?.(inputEvent)
+        }
+    }
+    const judgmentDisplay = (ele) => {
+        if (!ele?.getBoundingClientRect || !ele?.isConnected) return false
+        const rect = ele?.getBoundingClientRect?.()
+        return !!(rect?.width || rect?.height)
+    }
+    const getGlobalEle = (selector) => {
+       return[...document.querySelectorAll(selector)].find((ele) => judgmentDisplay(ele))
+    }
+    let interceptorFormat = () => {}
+    let hasIntercepted = false
+    const interceptor = (fn) => {
+        if (!JSZip) return
+        interceptorFormat = fn
+        if (hasIntercepted || !interceptorFormat) return
+        hasIntercepted = true
+        const originalOpen = XMLHttpRequest.prototype.open;
+        const originalSend = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.open = function(method, url) {
+            if (url.includes('/api/popTemuProduct/add.json')) this._is = true;
+            return originalOpen.apply(this, arguments);
+        };
+        XMLHttpRequest.prototype.send = function (body, ...rest) {
+            if (this._is && body) {
+                const file = body.get('file')
+                if (file) {
+                    return JSZip.loadAsync(file).then((zip) => {
+                        return zip.file("choiceSave.txt").async("text").then((fileData) => {
+                            let newFileData = fileData
+                            try {
+                                newFileData = {...JSON.parse(fileData)}
+                                const data = interceptorFormat?.(newFileData) ?? {}
+                                newFileData = {...newFileData, ...data}
+                                console.log('newFileData::: ', newFileData)
+                            }catch(err){ console.error(err) }
+                            var newZip = new JSZip();
+                            newZip.file("choiceSave.txt", JSON.stringify(newFileData));
+                            return newZip.generateAsync({
+                                type: "blob",
+                                compression: "DEFLATE",
+                                compressionOptions: {
+                                    level: 9
+                                }
+                            }).then((newFile) => {
+                                body.set("file", newFile)
+                                return originalSend.apply(this, [body, ...rest]);
+                            })
+                        });
+                    })
+                }
+            }
+            return originalSend.apply(this, arguments);
+        };
+    }
+
     let payload
     styles(`
     .dianxiaomi_plugin {
@@ -203,76 +284,207 @@ window.dianxiaomi_core = async () => {
     await (async () => {
         if (window.location.search === '?collection=1') {
             await sleep(1000)
+            // 数据读取
             payloadBtn?.click?.()
-            const shop = document.querySelector?.('#shopId');
-            if (shop && !shop.value) {
-                const id = window.localStorage?.getItem('__previous_shop__')
-                if (shop.querySelector(`[value="${id}"]`)) {
-                    shop.value = id
-                } else {
-                    shop.selectedIndex = 1
-                }
-                shop.onchange()
+            // 店铺选择
+            const shop = document.querySelector?.('#rc_select_0');
+            const shopSelector = shop?.closest?.('.ant-select-selector')
+            const shopPlaceholder = shopSelector.querySelector('.ant-select-selection-placeholder')
+            if (shopPlaceholder) {
+                shopSelector?.dispatchEvent?.(mousedownEvent)
             }
-            shop?.addEventListener?.('change',  (e) => {
-                if(e.target.value) {
-                    window.localStorage?.setItem('__previous_shop__', e.target.value)
+            shop.addEventListener('blur', () => {
+                setTimeout(() => {
+                    const name = shopSelector.querySelector('.ant-select-selection-item').getAttribute('title')
+                    name && window.localStorage?.setItem('__previous_shop_name__', name)
+                })
+            })
+            setTimeout(() => {
+                if (shopPlaceholder) {
+                    const name = window.localStorage?.getItem('__previous_shop_name__')
+                    const prevShop = document.querySelector?.(`#rc_select_0_list + div .rc-virtual-list-holder-inner > div[title="${name}"]`);
+                    if (prevShop) {
+                        prevShop?.click()
+                    } else {
+                        document.querySelector?.(`#rc_select_0_list + div .rc-virtual-list-holder-inner > div`)?.click?.()
+                    }
                 }
             })
             await sleep(2500)
-            const categoryHistory = document.querySelector?.('#categoryHistoryId')
-            if (categoryHistory && !categoryHistory.value) {
-                if (categoryHistory.querySelectorAll('option').length > 1) {
-                    categoryHistory.selectedIndex = 1
-                    categoryHistory.onchange()
-                    await sleep(500)
-                } else {
-                    document.querySelector('.categoryModalShow')?.click?.()
-                    await sleep(100)
-                    const searchCategory = query('#searchCategory')
-                    searchCategory.value = '室外水箱'
-                    searchCategory.nextElementSibling?.click?.()
-                    await sleep(2500)
-                    document.querySelector('.classifie-search [node-id]')?.click?.()
-                }
+            // 分类选择
+            const category = document.querySelector?.('#rc_select_2');
+            const categorySelector = category?.closest?.('.ant-select-selector')
+            const categoryPlaceholder = categorySelector.querySelector('.ant-select-selection-placeholder')
+            if (categoryPlaceholder) {
+                categorySelector?.dispatchEvent?.(mousedownEvent)
             }
+            setTimeout(async () => {
+                if (categoryPlaceholder) {
+                    const firstCategory = document.querySelector?.(`#rc_select_2_list + div .rc-virtual-list-holder-inner > div[id]`);
+                    if (!firstCategory) {
+                        firstCategory?.click()
+                    } else {
+                        category?.closest?.('.ant-select')?.nextElementSibling?.click?.()
+                        await sleep(100)
+                        const searchCategory = document.querySelector('[name="searchCategory"]')
+                        if (searchCategory) {
+                            searchCategory.value = '室外水箱'
+                            searchCategory?.dispatchEvent?.(changeEvent)
+                            await sleep(100)
+                            searchCategory?.nextElementSibling?.querySelector('button')?.click?.()
+                            await sleep(2500)
+                            searchCategory.closest('.modal-body')?.querySelector('.search-result-item')?.click()
+                        }
+                    }
+                }
+            })
         }
     })()
     
     importBtn?.addEventListener?.('click', async () => {
-        query('#sourceUrl0').value = payload.sourceUrl
-        query('#productTitle').value = payload.title_CN
-        query('#productI18n').value = payload.title
-        query('#productNumber').value = payload.skuId
-        if (!document.querySelector('[placeholder="请选择省份"]')?.value) {
-            document.querySelector('[data-value="43000000000006"]')?.click?.();
-        }
-        query('#outerGoodsUrl').value = payload.sourceUrl
-        await sleep(100)
-        const colorInput = document.querySelector('[name="otherColor"]')
-        if (colorInput) {
-            colorInput.value = payload.colors?.[0] ?? 'unknown'
-            sleep(100)
-            colorInput.nextElementSibling.click()
-            sleep(500)
-            query('.skuInfoTable [name="price"]').value = payload.price_CNY
-            query('.skuInfoTable [name="skuLength"]').value = payload.size?.[0]
-            query('.skuInfoTable [name="skuWidth"]').value = payload.size?.[1]
-            query('.skuInfoTable [name="skuHeight"]').value = payload.size?.[2]
-            query('.skuInfoTable [name="weight"]').value = payload.weight
-            if (!document.querySelector('.siteWarehouseBox .customSelEntiretyModule .tagOutState')) {
-                const skuWarehouseSel = document.querySelector('.siteWarehouseBox .custom-sel-dropdown-menu .scroll-bar li input')
-                skuWarehouseSel?.click?.()
-            }
+        // 来源URL
+        setInput('#form_item_sourceList_0_path', payload.sourceUrl)
+        // 中文标题
+        setInput(document.querySelector('#productProductInfo .ant-form-item label[title="产品标题"]')?.closest('.ant-form-item').querySelector('.ant-input'), payload.title_CN)
+        // 英文标题
+        setInput(document.querySelector('#productProductInfo .ant-form-item label[title="英文标题"]')?.closest('.ant-form-item').querySelector('.ant-input'), payload.title)
+        // 商品id
+        setInput('.productNumber', payload.skuId)
+        // 产地
+        const productOrigin = document.querySelector?.('[title="请选择省份"]');
+        const productOriginSelector = category?.closest?.('.ant-select-selector')
+        productOriginSelector?.dispatchEvent?.(mousedownEvent)
+        setTimeout(() => getGlobalEle('.ant-select-item[title="广东省"]')?.click?.())
+        // 站外产品链接
+        setInput(document.querySelector('#productProductInfo .ant-form-item label[title="站外产品链接"]')?.closest('.ant-form-item').querySelector('.ant-input'), payload.sourceUrl)
+        // 设置图片
+        const imageCon = document.querySelector('#productProductInfo .ant-form-item label[title="产品轮播图"]')?.closest('.ant-form-item')
+        const imgeButton = imageCon.querySelector('button')
+        if (imgeButton) {
+            imgeButton?.dispatchEvent?.(mouseleaveEvent)
+            imgeButton?.dispatchEvent?.(mouseenterEvent)
+            await sleep(1)
+            getGlobalEle('[data-menu-id="net"]')?.click?.()
+            imgeButton?.dispatchEvent?.(mouseleaveEvent)
             await sleep(100)
-            query('.skuOtherInfoList [name="stock"]').value = payload.stock
+            const netImgUrl = getGlobalEle('[placeholder="请填写图片URL地址，多个地址用回车换行"]')
+            const detail_images = payload?.detail_images ?? []
+            let list = [...(payload?.images ?? [])]
+            if (list.length > 10) {list = [...list.slice(0, 7)].concat(list.length > 3 ? list.slice(-3) : [])}
+            if (list.length < 10 && detail_images.length) {
+                const m = {}
+                list.forEach((img) => {m[img] = true})
+                for (let i = 0; i < detail_images.length; i++) {
+                    const img = detail_images[i]
+                    if (!img || m[img]) continue
+                    list.push(img)
+                    m[img] = true
+                    if (list.length >= 10) break
+                }
+            }
+            setInput(netImgUrl, list.join('\n'))
+            netImgUrl?.closest?.('.ant-modal-content')?.querySelector('.ant-btn-primary')?.click?.()
+            await sleep(100);
+            const imageEditButton = imageCon.querySelector('.img-options .action-item:nth-child(2) a')
+            imageEditButton?.dispatchEvent?.(mouseleaveEvent)
+            imageEditButton?.dispatchEvent?.(mouseenterEvent)
+            await sleep(1)
+            const dropdown = getGlobalEle('.ant-dropdown')
+            if (dropdown) {
+                dropdown.querySelector('.ant-dropdown-menu-item')?.click()
+                imageEditButton?.dispatchEvent?.(mouseleaveEvent)
+                await sleep(2500)
+                const resizeModal = document.querySelector('.resize-info').closest('.ant-modal-wrap')
+                const valueW = resizeModal?.querySelector('[name="valueW"]')
+                if (valueW && !valueW.value) setInput(valueW, '800')
+                const checkbox = resizeModal?.querySelector('.resize-info .right .ant-checkbox-input')
+                if (!checkbox?.checked) checkbox?.click?.()
+                resizeModal?.querySelector('.resize-info .ant-btn-primary')?.click?.()
+                await polling(() => judgmentDisplay(resizeModal))
+            }
         }
-        query('#packageShape').selectedIndex = 2
-        query('#packageType').selectedIndex = 1
-        document.querySelector('.product-info-module-content [name="deliveryTime"][value="172800"]')?.click?.()
-        document.querySelector('#freightTemplateBox .menuListLi:last-child')?.click?.()
-        const wirelessDescBox = document.querySelector('#wirelessDescContentBox')
-        if (wirelessDescBox) {
+        // 颜色属性
+        const colorCon = document.querySelector('.ant-select-selection-item[title="颜色"]')?.closest('.ant-select')?.nextElementSibling
+        if (colorCon) {
+            const colorCheckbox = colorCon.querySelector('.checkbox-input')
+            if (!colorCheckbox) {
+                const colorInput = colorCon.querySelector('.ant-input')
+                setInput(colorInput, payload.colors?.[0] ?? 'unknown')
+                colorInput.nextElementSibling?.click?.()
+                sleep(100)
+            }
+        }
+        // 变种信息
+        setInput('#skuDataInfo .skuDataTable [name="variationSku"]', payload.skuId)
+        setInput('#skuDataInfo .skuDataTable [name="price"]', payload.price_CNY)
+        setInput('#skuDataInfo .skuDataTable [name="skuLength"]', payload.size?.[0])
+        setInput('#skuDataInfo .skuDataTable [name="skuWidth"]', payload.size?.[1])
+        setInput('#skuDataInfo .skuDataTable [name="skuHeight"]', payload.size?.[2])
+        setInput('#skuDataInfo .skuDataTable [name="weight"]', payload.weight)
+        const skuWarehouse = document.querySelector('#skuDataInfo .skuWarehouse')
+        if (skuWarehouse && !skuWarehouse.querySelector('.ant-select-selection-item')) {
+            const skuWarehouseSelector = skuWarehouse.querySelector('.ant-select-selector')
+            skuWarehouseSelector?.dispatchEvent?.(mousedownEvent)
+            await sleep(100)
+            const dropdown = getGlobalEle('.ant-dropdown')
+            dropdown.querySelector?.('.rc-virtual-list .ant-select-item')?.click?.()
+            await sleep(100)
+            setInput('#skuDataInfo .skuWarehouse [name="stock"]', payload.stock)
+        }
+        // 变种图片
+        const imgCloseIcon = document.querySelector('#skuDataInfo .skuDataTable .img-close-icon')    
+        if (!imgCloseIcon) {
+            const skuImage = document.querySelector('#skuDataInfo .skuDataTable .sku-image')
+            skuImage?.dispatchEvent?.(mouseleaveEvent)
+            skuImage?.dispatchEvent?.(mouseenterEvent)
+            setTimeout(() => {
+                getGlobalEle('.ant-dropdown [data-menu-id="product"]')?.click?.();
+                skuImage?.dispatchEvent?.(mouseleaveEvent)
+            })
+            setTimeout(() => {
+                const selectProductImageCheckbox = getGlobalEle('.ant-modal-wrap .ant-checkbox-group .ant-checkbox-input')
+                if (selectProductImageCheckbox) {
+                    selectProductImageCheckbox?.click?.()
+                    setTimeout(() => {
+                        selectProductImageCheckbox?.closest?.('.ant-modal-content')?.querySelector('.ant-btn-primary')?.click?.()
+                    })
+                }
+            }, 1500)
+        }
+        // 包装信息
+        const innerPackageSelector = document.querySelector('#packageInfo [title="外包装形状"]')?.closest('.ant-form-item')?.querySelector('.ant-select-selector')
+        if (innerPackageSelector) {
+            innerPackageSelector?.dispatchEvent?.(mousedownEvent)
+            setTimeout(() => getGlobalEle('.rc-virtual-list [title="长方体"]')?.click?.())
+        }
+        const outerPackageSelector = document.querySelector('#packageInfo [title="外包装类型"]')?.closest('.ant-form-item')?.querySelector('.ant-select-selector')
+        if (outerPackageSelector) {
+            outerPackageSelector?.dispatchEvent?.(mousedownEvent)
+            setTimeout(() => getGlobalEle('.rc-virtual-list [title="硬包装"]')?.click?.())
+        }
+        const packageImageCon = document.querySelector('#packageInfo .ant-form-item label[title="外包装图片"]')?.closest('.ant-form-item')
+        const packageImageButton = packageImageCon.querySelector('button')
+        if (packageImageButton) {
+            imgeButton?.dispatchEvent?.(mouseleaveEvent)
+            imgeButton?.dispatchEvent?.(mouseenterEvent)
+            await sleep(1)
+            getGlobalEle('[data-menu-id="net"]')?.click?.()
+            imgeButton?.dispatchEvent?.(mouseleaveEvent)
+            await sleep(100)
+            const netImgUrl = getGlobalEle('[placeholder="请填写图片URL地址，多个地址用回车换行"]')
+            setInput(netImgUrl, 'https://img.myshopline.com/image/official/477168e554ab409cad55a46005699cf1.jpeg')
+            netImgUrl?.closest?.('.ant-modal-content')?.querySelector('.ant-btn-primary')?.click?.()
+        }
+        // 运输配置
+        const ship2dayRadio = document.querySelector('#shipmentInfo input[value="172800"]')
+        if (ship2dayRadio) ship2dayRadio.click()
+        const shipmentInfoSelector = document.querySelector('#shipmentInfo [title="运费模板"]')?.closest('.ant-form-item')?.querySelector('.ant-select-selector')
+        shipmentInfoSelector?.dispatchEvent?.(mousedownEvent)
+        setTimeout(() => getGlobalEle('.rc-virtual-list .ant-select-item[id]')?.click?.())
+        // 产品详情
+        document.querySelector('.btn-green')?.previousElementSibling?.click?.()
+        interceptor?.((data) => {
+            if (!data?.description) return {}
             const list = []
             payload.description?.forEach?.((text) => {
                 list.push({
@@ -298,80 +510,17 @@ window.dianxiaomi_core = async () => {
                     }
                 })
             })
-            wirelessDescBox.dataset.list = JSON.stringify(list)
-            window.POP_TEMU_PRODUCT_FN?.descriptionFn?.modalShow?.();
-            window.DESCRIPTION_EDITOR?.modalSave?.();
-        }
-        await sleep(100)
-        let netImgUrl = document.querySelector('#netImgUrl')
-        if (!document.querySelector('#myjPackageDrop li')) {
-            window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.proNetworkImgShow?.('productPackageImg');
-            netImgUrl = document.querySelector('#netImgUrl')
-            // https://img.myshopline.com/image/official/477168e554ab409cad55a46005699cf1.jpeg
-            if (netImgUrl) {
-                netImgUrl.value = 'https://img.myshopline.com/image/official/477168e554ab409cad55a46005699cf1.jpeg'
-                window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.proNetworkImgConfirm?.();
+            return {
+                description: JSON.stringify(list)
             }
-        }
-        await sleep(100)
-        // window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.uploadImg?.(2, document.querySelector('#skuInfoTable .tuiImageEditorBox'));
-        // let netImgUrl2 = document.querySelector('#netImgUrl2')
-        // if (netImgUrl2) {
-        //     netImgUrl2.value = payload?.images?.[0]
-        //     window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.downImgFromUrl2?.();
-        //     window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.proNetworkImgShow?.();
-        // }
-        // await sleep(100)
-        if (netImgUrl) {
-            const detail_images = payload?.detail_images ?? []
-            let list = [...(payload?.images ?? [])]
-            if (list.length > 10) {list = [...list.slice(0, 7)].concat(list.length > 3 ? list.slice(-3) : [])}
-            if (list.length < 10 && detail_images.length) {
-                const m = {}
-                list.forEach((img) => {m[img] = true})
-                for (let i = 0; i < detail_images.length; i++) {
-                    const img = detail_images[i]
-                    if (!img || m[img]) continue
-                    list.push(img)
-                    m[img] = true
-                    if (list.length >= 10) break
-                }
-            }
-            netImgUrl.value = list.join('\n');
-            window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.clearImage?.()
-            window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.proNetworkImgConfirm?.();
-            await sleep(100);
-            window.IMGRESIZE?.modalBuild?.('resizeOut', window.POP_TEMU_PRODUCT_FN?.skuFn?.resizecall, 'popTemu');
-            await sleep(2500);
-            const setlen = document.querySelector('#imgResize [name="setlen"]')
-            if (setlen) {
-                if (!setlen.value) { setlen.value = 800 }
-                const remenberSettings = document.querySelector('#imgResize [name="remenberSettings"]')
-                if (!remenberSettings.checked) {
-                    remenberSettings.click()
-                }
-                window.IMGRESIZE?.beforeResize?.(document.querySelector('#imageScaleSelect')?.nextElementSibling, true, 'jpeg');
-            }
-        }
+        })
+        polling(() => {
+            const ele = document.querySelector('.ant-modal-wrap .ant-btn-primary')
+            const display = judgmentDisplay(ele)
+            if (display) {ele?.click?.()}
+            return display
+        }, 300, 2000)
     })
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(async e => {
-            if (!e.isIntersecting) {
-                if (document.querySelector('#skuInfoTable .removeSkuImgBtn.hide')) {
-                    window.POP_TEMU_PRODUCT_IMAGE_UP?.imageFn?.uploadImg?.(6, document.querySelector('#skuInfoTable .tuiImageEditorBox'));
-                    const quoteImageModal = document.querySelector('#quoteImageModal')
-                    await sleep(100);
-                    const quoteImg0 = quoteImageModal.querySelector('#quoteImg0 label')
-                    if (quoteImg0) {
-                        quoteImageModal.querySelector('#quoteImg0 label')?.click?.()
-                        await sleep(100);
-                        PRODUCT_QUOTE_IMG.quoteImageConfirm();
-                    }
-                }
-            }
-        });
-    });
-    observer.observe(document.querySelector('#imgResize'));
 
     drawerContent?.addEventListener?.('click', async (e) => {
         if(e.target.classList.contains('drawer_content_copy')) {
