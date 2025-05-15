@@ -104,6 +104,17 @@ window.common_plugin_core = async () => {
           }, wait);
         };
     }
+    function throttle(func, wait = 1000) {
+        let timeout;
+        return function(...args) {
+          if (timeout) return
+          const context = this;
+          timeout = setTimeout(() => {
+            timeout = null
+            func.apply(context, args);
+          }, wait);
+        };
+    }
      // 模糊匹配内容元素
      const findElementsByText = (text, parent = document) => {
         // 查找包含特定文本的文本节点
@@ -305,9 +316,11 @@ window.common_plugin_core = async () => {
         }
         return data
     }
+    let hasData = false
      const handle = async () => {
         const data = await getData()
         if (!data) {return}
+        hasData = true
         app.classList.remove('hide')
         app.dataSource = data
         let html = ''
@@ -343,21 +356,21 @@ window.common_plugin_core = async () => {
         }, 1500)
     }
     let isCheckPage = false
-    document.body.addEventListener('mousemove', debounce(() => {
+    document.body.addEventListener('mousemove', throttle(() => {
         if (checkoutUrls.some((url) => window.location.href.includes(url))) {
-            if (!isCheckPage) {setTimeout(() => {document.hasFocus(); handle()}, 1000)}
+            if (!isCheckPage || !hasData) {setTimeout(() => {document.hasFocus(); handle()}, 1000)}
             app.classList.remove('hide')
             isCheckPage = true
         } else {
             isCheckPage = false
             app.classList.add('hide')
         }
-    }))
+    }, 1500))
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' && checkoutUrls.some((url) => window.location.href.includes(url))) {
             setTimeout(() => {
                 document.hasFocus(); handle()
-            }, 1000)
+            }, 1500)
         } 
     })
     app.addEventListener('click', async (e) => {
