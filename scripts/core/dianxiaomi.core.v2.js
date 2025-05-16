@@ -300,11 +300,16 @@ window.dianxiaomi_core = async () => {
         await sleep(1000)
         // 店铺选择
         const shop = document.querySelector?.('#rc_select_0');
+        if (!shop) {
+            await polling(() => {
+                shop = document.querySelector?.('#rc_select_0');
+                return !!shop
+            }, 300)
+        }
+        // 店铺选择
         const shopSelector = shop?.closest?.('.ant-select-selector')
         const shopPlaceholder = shopSelector.querySelector('.ant-select-selection-placeholder')
-        if (shopPlaceholder) {
-            shopSelector?.dispatchEvent?.(new Event('mousedown'))
-        }
+        if (shopPlaceholder) {shopSelector?.dispatchEvent?.(new Event('mousedown'))}
         shop.addEventListener('blur', () => {
             setTimeout(() => {
                 const name = shopSelector.querySelector('.ant-select-selection-item').getAttribute('title')
