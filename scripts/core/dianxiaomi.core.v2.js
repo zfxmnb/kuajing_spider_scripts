@@ -1,22 +1,7 @@
-// ==UserScript==
-// @name         dianxiaomi_v2
-// @namespace    http://tampermonkey.net/
-// @version      2025-05-15
-// @description  try to take over the world!
-// @author       You
-// @match        https://www.dianxiaomi.com/web/popTemu/*
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=google.com
-// @grant        none
-// @require      https://cdn.bootcdn.net/ajax/libs/jszip/3.10.1/jszip.min.js
-// ==/UserScript==
-
-// 代理
-// https://gh-proxy.com/$GITHUB_URL
-// https://ghfast.top/$GITHUB_URL
 let runed = false
 window.dianxiaomi_core = async () => {
     if (runed) true
-    console.log('dianxiaomi_core_v2 running', '2025050019')
+    console.log('dianxiaomi_core_v2 running', '2025051111')
     runed = true
     function styles(content){
         const style = document.createElement('style');
@@ -35,7 +20,7 @@ window.dianxiaomi_core = async () => {
             setTimeout(resolve, t)
         })
     }
-    async function polling (fn, t = 100, max = 5000) {
+    async function polling (fn, t = 100, max = 10000) {
         return new Promise((resolve) => {
             let finished = false
             const timer = setInterval(() => {
@@ -83,6 +68,24 @@ window.dianxiaomi_core = async () => {
     const getGlobalEle = (selector) => {
        return [...document.querySelectorAll(selector)].reverse().find((ele) => judgmentDisplay(ele))
     }
+    // 模糊匹配内容元素
+    const findElementsByText = (text, parent = document, filter = () => true) => {
+        // 查找包含特定文本的文本节点
+        const matchingTextNodes = document.evaluate(
+            `//text()[contains(., "${text}") and not(ancestor::script)]`,
+            parent,
+            null,
+            XPathResult.UNORDERED_NODE_ITERATOR_TYPE,
+            null
+        );
+        const matchedNodes = [];
+        let node
+        while ((node = matchingTextNodes.iterateNext())) {
+            if (!filter(node.parentElement)) continue
+            matchedNodes.push(node.parentElement);
+        }
+        return matchedNodes
+    }
     let interceptorFormat = () => {}
     let hasIntercepted = false
     const interceptor = (fn) => {
@@ -102,21 +105,20 @@ window.dianxiaomi_core = async () => {
                 if (file) {
                     return JSZip.loadAsync(file).then((zip) => {
                         return zip.file("choiceSave.txt").async("text").then((fileData) => {
-                            let newFileData = fileData
+                            let newFileData = null
                             try {
                                 newFileData = {...JSON.parse(fileData)}
+                                // console.log('oldFileData::: ', newFileData)
                                 const data = interceptorFormat?.(newFileData) ?? {}
                                 newFileData = {...newFileData, ...data}
-                                console.log('newFileData::: ', newFileData)
-                            }catch(err){ console.error(err) }
+                                // console.log('newFileData::: ', newFileData)
+                            } catch (err) { console.error(err) }
                             var newZip = new JSZip();
-                            newZip.file("choiceSave.txt", JSON.stringify(newFileData));
+                            newZip.file("choiceSave.txt", newFileData ? JSON.stringify(newFileData) : fileData );
                             return newZip.generateAsync({
                                 type: "blob",
                                 compression: "DEFLATE",
-                                compressionOptions: {
-                                    level: 9
-                                }
+                                compressionOptions: { level: 9 }
                             }).then((newFile) => {
                                 body.set("file", newFile)
                                 return originalSend.apply(this, [body, ...rest]);
@@ -396,7 +398,7 @@ window.dianxiaomi_core = async () => {
             netImgUrl.dispatchEvent?.(new Event('change'))
             await sleep(100);
             netImgUrl?.closest?.('.ant-modal-wrap')?.querySelector('.ant-btn-primary')?.click?.()
-            await sleep(100);
+            await sleep(1000);
             const imageEditButton = imageCon.querySelector('.img-options .action-item:nth-child(2) a')
             imageEditButton?.dispatchEvent?.(new Event('mouseenter'))
             await sleep(100)
@@ -411,7 +413,9 @@ window.dianxiaomi_core = async () => {
                 const checkbox = resizeModal?.querySelector('.resize-info .right .ant-checkbox-input')
                 if (!checkbox?.checked) checkbox?.click?.()
                 resizeModal?.querySelector('.resize-info .ant-btn-primary')?.click?.()
-                await polling(() => judgmentDisplay(resizeModal))
+                if (resizeModal) {
+                    await polling(() => !judgmentDisplay(resizeModal))
+                }
             }
         }
         // 颜色属性
@@ -497,17 +501,19 @@ window.dianxiaomi_core = async () => {
         getGlobalEle('.rc-virtual-list .ant-select-item[id]')?.click?.()
         // 产品详情
         interceptor?.((data) => {
+            interceptor(void 0)
             if (data?.description) return {}
             const list = []
+            let priority = 0
             payload.description?.forEach?.((text) => {
                 list.push({
-                    "lang":"zh", "type":"text", "priority":"0",
+                    "lang":"zh", "type":"text", "priority":`${priority++}`,
                     "contentList": {
                         "text": text,
-                        "style": {
+                        "textModuleDetails": {
                             "fontFamily": null,
                             "fontSize": "12",
-                            "color": "#000000",
+                            "fontColor": "#000000",
                             "align": "left",
                             "backgroundColor": "#ffffff"
                         }
@@ -516,7 +522,7 @@ window.dianxiaomi_core = async () => {
             })
             payload.detail_images?.forEach?.((imgUrl) => {
                 list.push( {
-                    "lang":"zh", "type":"image", "priority":"0",
+                    "lang":"zh", "type":"image", "priority":`${priority++}`,
                     "contentList": {
                         "imgUrl": imgUrl,
                         "width": 800,
@@ -528,36 +534,32 @@ window.dianxiaomi_core = async () => {
                 description: JSON.stringify(list)
             }
         })
-        setTimeout(() => { document.querySelector('.btn-green')?.previousElementSibling?.click?.() }, 1000)
+        setTimeout(() => {findElementsByText('保存', document.body, (ele) => ele.closest('.btn-orange'))[0]?.click?.()}, 1000)
         polling(() => {
             const ele = document.querySelector('.ant-modal-wrap .ant-btn-primary')
             const display = judgmentDisplay(ele)
             if (display) {ele?.click?.()}
             return display
-        }, 300, 2000)
+        }, 500, 2000)
     })
 
     drawerContent?.addEventListener?.('click', async (e) => {
-        if(e.target.classList.contains('drawer_content_copy')) {
+        if (e.target.classList.contains('drawer_content_copy')) {
             const index = e.target.dataset.index
-            if(Number(index) > -1){
+            if (Number(index) > -1) {
                 const value = copyMap[Number(index)]
                 copyToClipboard(value instanceof Array ? value.join('\n'): value)
             }
         }
-        if(e.target.classList.contains('drawer_content_image')) {
+        if (e.target.classList.contains('drawer_content_image')) {
             const value = e.target.src
             value && copyToClipboard(value instanceof Array ? value.join('\n'): value)
         }
     })
     drawerContent?.addEventListener?.('dblclick', async (e) => {
-        if(e.target.classList.contains('drawer_content_image')) {
+        if (e.target.classList.contains('drawer_content_image')) {
             const value = e.target.src
             value && window.open(value)
         }
     })
 }
-
-(async function() {
-    dianxiaomi_core();
-})();
