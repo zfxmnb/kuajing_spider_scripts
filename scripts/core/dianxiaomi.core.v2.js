@@ -545,7 +545,7 @@ window.dianxiaomi_core = async () => {
             const display = judgmentDisplay(ele)
             if (display) {ele?.click?.()}
             return display
-        }, 500, 2000)
+        }, 500)
     })
 
     drawerContent?.addEventListener?.('click', async (e) => {
