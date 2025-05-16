@@ -299,7 +299,7 @@ window.dianxiaomi_core = async () => {
     await (async () => {
         await sleep(1000)
         // 店铺选择
-        const shop = document.querySelector?.('#rc_select_0');
+        let shop = document.querySelector?.('#rc_select_0');
         if (!shop) {
             await polling(() => {
                 shop = document.querySelector?.('#rc_select_0');
