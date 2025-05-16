@@ -304,7 +304,7 @@ window.dianxiaomi_core = async () => {
             await polling(() => {
                 shop = document.querySelector?.('#rc_select_0');
                 return !!shop
-            }, 300)
+            }, 300, 30000)
         }
         // 店铺选择
         const shopSelector = shop?.closest?.('.ant-select-selector')
@@ -327,7 +327,7 @@ window.dianxiaomi_core = async () => {
                 }
             }
         })
-        await sleep(2500)
+        await sleep(3000)
         // 分类选择
         const category = document.querySelector?.('#rc_select_2');
         const categorySelector = category?.closest?.('.ant-select-selector')
@@ -403,7 +403,7 @@ window.dianxiaomi_core = async () => {
             netImgUrl.dispatchEvent?.(new Event('change'))
             await sleep(100);
             netImgUrl?.closest?.('.ant-modal-wrap')?.querySelector('.ant-btn-primary')?.click?.()
-            await sleep(1000);
+            await sleep(1500);
             const imageEditButton = imageCon.querySelector('.img-options .action-item:nth-child(2) a')
             imageEditButton?.dispatchEvent?.(new Event('mouseenter'))
             await sleep(100)
@@ -447,7 +447,7 @@ window.dianxiaomi_core = async () => {
             const skuWarehouseSelector = skuWarehouse.querySelector('.ant-select-selector')
             await sleep(100)
             skuWarehouseSelector?.dispatchEvent?.(new Event('mousedown'))
-            await sleep(1000)
+            await sleep(1500)
             const dropdown = getGlobalEle('.ant-select-dropdown')
             dropdown.querySelector?.('.rc-virtual-list .ant-select-item')?.click?.()
             skuWarehouseSelector.querySelector('input')?.dispatchEvent?.(new Event('blur'))
@@ -502,7 +502,7 @@ window.dianxiaomi_core = async () => {
         if (ship2dayRadio) ship2dayRadio.click()
         const shipmentInfoSelector = document.querySelector('#shipmentInfo [title="运费模板"]')?.closest('.ant-form-item')?.querySelector('.ant-select-selector')
         shipmentInfoSelector?.dispatchEvent?.(new Event('mousedown'))
-        await sleep(1000)
+        await sleep(1500)
         getGlobalEle('.rc-virtual-list .ant-select-item[id]')?.click?.()
         // 产品详情
         interceptor?.((data) => {
