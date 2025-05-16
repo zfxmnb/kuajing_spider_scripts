@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <input id="pdfUrl"/><button id="networkpdf">网络文件</button><br/>
+    <input id="source" type="file" accept=".pdf" /><br/>
+    <input id="target" type="file"/>
+    <script>
+        const fn = (ele, name, base64Str) => {
+            if (!base64Str) return
+            const [mimePart, base64Part] = base64Str.split(',');
+            const mimeType = mimePart.match(/:(.*?);/)[1];
+            if (!mimeType || !base64Part) return
+            const byteCharacters = atob(base64Part); // 解码 Base64
+            const byteNumbers = new Uint8Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const blob = new Blob([byteNumbers], { type: mimeType });
+            const file = new File([blob], name || `temp.${mimeType?.split('/').pop()}`, { type: mimeType });
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file); 
+            ele.files = dataTransfer.files;
+        }
+        source.addEventListener('change', (e) => {
+            const file = e.target.files?.[0]
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {fn(target, file.name, e.target.result)};
+                reader.readAsDataURL(file); // 读取文件为 Data URL
+            }
+        })
+        networkpdf.addEventListener('click', () => {
+            // 使用 fetch 下载 PDF 文件
+            if (!pdfUrl.value || !/^https?:\/\/.*/.test(pdfUrl.value)) return
+            const name = pdfUrl.value?.match?.(/[^\/]+$/)?.[0] || 'temp.pdf'
+            fetch(pdfUrl.value).then(response => {
+                if (!response.ok) {
+                    throw new Error('网络响应不正常');
+                }
+                return response.blob()
+                
+            }).then((blob) => {
+                const reader = new FileReader();
+                reader.onloadend = function() {fn(target, name, reader.result)};
+                reader.readAsDataURL(blob); // 将 Blob 转换为 Data URL
+            })
+        })
+    </script>
+</body>
+</html>
