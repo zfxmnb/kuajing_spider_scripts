@@ -25,6 +25,7 @@
             const dataTransfer = new DataTransfer();
             dataTransfer.items.add(file); 
             ele.files = dataTransfer.files;
+            ele.dispatchEvent(new Event('change', { bubbles: true }));
         }
         source.addEventListener('change', (e) => {
             const file = e.target.files?.[0]
