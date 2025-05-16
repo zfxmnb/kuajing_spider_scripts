@@ -564,6 +564,62 @@ window.temu_helper_v2_core = async () => {
                 console.error("Error fetching data:", error);
             });
     }
+    async function getOrderPackages(id) {
+        return fetch("/mms/eagle/package/main_batch_query", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                "mallid": await getMallId(),
+            },
+            body: JSON.stringify(
+                {"logistics_create_time":[], "parent_order_sn_list":id,"page_number":1,"page_size":50,"sort_type":1,"po_sn_list":[id]}
+            )
+        })
+        .then(response => response.json())
+        .then((data) => {
+            if (data.error_code == 40001 || !data?.result) {
+                console.error('/mms/eagle/package/main_batch_query 接口请求失败', data)
+                // 登录异常通知
+                if (data.error_code == 40001) {
+                    logoutNotice()
+                }
+                return Promise.reject(data)
+            }
+            return data?.result?.package_info_result_list ?? []
+        })
+        .catch(error => {
+            console.error("Error fetching data:", error);
+            return Promise.resolve([])
+        });
+    }
+    async function getOrderPackageShippingLabel(id) {
+        return fetch("/mms/eagle/package/batch_print_shipping_label", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                "mallid": await getMallId(),
+            },
+            body: JSON.stringify(
+                {"package_sn_list":[id],"merge_files":true}
+            )
+        })
+            .then(response => response.json())
+            .then((data) => {
+                if (data.error_code == 40001 || !data?.result) {
+                    console.error('/mms/eagle/package/batch_print_shipping_label 接口请求失败', data)
+                    // 登录异常通知
+                    if (data.error_code == 40001) {
+                        logoutNotice()
+                    }
+                    return Promise.reject(data)
+                }
+                return (data?.result?.shipping_label_info_list ?? [])?.map((item) => {item.shipping_label_url = item.shipping_label_url || data?.result?.merged_shipping_label_url; return item})?.[0]
+            })
+            .catch(error => {
+                console.error("Error fetching data:", error);
+                return Promise.resolve([])
+            });
+    }
     const mergeList = (items = [], dataItems = [], uniqueKey, keys = []) => {
         const dataMap = {}
         if (uniqueKey && keys?.length) {
@@ -1366,13 +1422,40 @@ window.temu_helper_v2_core = async () => {
                         window.open(url)
                     }
                 }
+                const packagesSource = await getOrderPackages(text)
+                const packagesData = []
+                if (packagesSource?.length) {
+                    for (var i = 0; i < packagesSource.length; i++) {
+                        try {
+                            if (packagesSource[i]?.package_sn) {
+                                const { package_sn, tracking_number, ship_company_name, ship_logistics_type, shipping_label_url } = await getOrderPackageShippingLabel(packagesSource[i]?.package_sn) ?? {}
+                                if (package_sn && tracking_number && shipping_label_url) {
+                                    const dataSource = await fetch(shipping_label_url).then(response => {
+                                        if (!response.ok) {throw new Error('网络响应不正常');}
+                                        return response.blob()
+                                        
+                                    }).then((blob) => {
+                                        return new Promise((resolve) => {
+                                            const reader = new FileReader();
+                                            reader.onloadend = function() {resolve(reader.result)};
+                                            reader.readAsDataURL(blob);
+                                        })
+                                    })
+                                    packagesData.push({ package_sn, tracking_number, ship_company_name, ship_logistics_type, shipping_label_url, dataSource })
+                                }
+                            }
+                        } catch(err) {console.error(err)}
+                    }
+                }
                 if (addressMap[text]) {
+                    addressMap[text].packagesData = packagesData
                     copyToClipboard(JSON.stringify(addressMap[text]))
                     launch()
                     return
                 }
                 getAddress(text).then((res) => {
                     if (res) {
+                        res.packagesData = packagesData
                         copyToClipboard(JSON.stringify(res))
                         launch()
                         addressMap[text] = res
