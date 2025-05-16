@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-    console.log('common_plugin_core running', '202505121535')
+    console.log('common_plugin_core running', '202505170026')
     const matchDomains = ['www.gigab2b.com', 'www.saleyee.cn', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'returnhelper.com', 'oms.xlwms.com']
     // 一下内容在指定域名下生效
     if (!matchDomains.includes(window.location.host)) {return}
@@ -83,6 +83,28 @@ window.common_plugin_core = async () => {
     let rate
     function numberFixed (num, b = 2) {
         return Number(Number(num).toFixed(b)) || 0
+    }
+    async function sleep (t = 0) {
+        return new Promise((resolve) => {
+            setTimeout(resolve, t)
+        })
+    }
+    const setFile = (ele, name, base64Str) => {
+        if (!base64Str) return
+        const [mimePart, base64Part] = base64Str.split(',');
+        const mimeType = mimePart.match(/:(.*?);/)[1];
+        if (!mimeType || !base64Part) return
+        const byteCharacters = atob(base64Part); // 解码 Base64
+        const byteNumbers = new Uint8Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const blob = new Blob([byteNumbers], { type: mimeType });
+        const file = new File([blob], name || `temp.${mimeType?.split('/').pop()}`, { type: mimeType });
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file); 
+        ele.files = dataTransfer.files;
+        ele.dispatchEvent(new Event('change', { bubbles: true }));
     }
     const inputEvent = new Event('input', {
         'bubbles': true,
@@ -335,6 +357,13 @@ window.common_plugin_core = async () => {
         html+=`<div>省份：<span class="addr_item_value">${data?.region_name2}</span></div>`
         html+=`<div>城市：<span class="addr_item_value">${data?.region_name3}</span></div>`
         html+=`<div>邮编：<span class="addr_item_value">${data?.post_code}</span></div>`
+        if (data?.packagesData?.length) {
+            html+="<div>["
+            data?.packagesData?.forEach(({ tracking_number, ship_company_name, ship_logistics_type, dataSource, shipping_label_url }, index) => {
+                html+=`${index ? ', ': '' }<a href="${dataSource ?? shipping_label_url}" download="${tracking_number}">${tracking_number}:${ship_company_name} ${ship_logistics_type}</a>`
+            })
+            html+="]</div>"
+        }
         if (window.location.href.includes(saleCheckout)) {
             html+=`<div><a class="sale_checkout_import">一键导入</a></div>`
         }
@@ -345,34 +374,75 @@ window.common_plugin_core = async () => {
             html+=`<div><a class="goodcang_checkout_import">一键导入</a></div>`
         }
         app.innerHTML = html
-        setTimeout(() => {
-            if (window.location.href.includes(saleCheckout)) {
+        setTimeout(async () => {
+            if (window.location.href.includes(saleCheckout) && document.querySelector('.alladdress li.active')) {
                 const sale_platform = new URLSearchParams(location.search).get('sale_platform') || 'Temu'
                 document.querySelector('#salePlatforms').nextElementSibling.querySelector(`dd[lay-value="${sale_platform}"]`).click()
                 document.querySelector('.other_order_information .order-referno').value = data?.parent_order_sn
                 document.querySelector('#tr_platformServices [value="BX0001"]').nextElementSibling.click()
-                document.querySelector('#tr_platformServices [value="BX0002"]').nextElementSibling.click()
+                document.querySelector('#tr_platformServices [value="BX0002"]')?.nextElementSibling?.click?.()
+                if (data?.packagesData?.length) {
+                    for(var i = 0; i < data?.packagesData?.length; i++) {
+                        const { tracking_number, ship_company_name, ship_logistics_type, dataSource } = data?.packagesData[i] ?? {}
+                        if (i) {
+                            document.querySelector('.add_pick_up')?.click()
+                            await sleep(100)
+                        }
+                        const tr = document.querySelector(`.pick_up_table tbody tr:nth-child(${i + 1})`)
+                        if (tr) {
+                            const selectorList = []
+                            if (ship_company_name && ship_logistics_type) {
+                                const company = ship_company_name.toUpperCase()
+                                let type = ship_logistics_type
+                                if (type === 'ground economy') {type = 'economy'}
+                                const types = type?.split(' ') ?? []
+                                selectorList.push(`dd[lay-value="${company}_${types.join('_').toUpperCase()}"]`)
+                                selectorList.push(`dd[lay-value="${company} ${type}"]`)
+                                tr.querySelector(selectorList.join(','))?.click()
+                            }
+                            const trackingNo = tr.querySelector('[name="TrackingNo"]')
+                            if (trackingNo) {
+                                trackingNo.value = tracking_number;
+                            }
+                            const upload = tr.querySelector('.layui-upload-file')
+                            if (upload) {
+                                const handle = (e) => {e.preventDefault();}
+                                upload.addEventListener('click', handle)
+                                tr.querySelector(`.uploadPickUpLabel`)?.click()
+                                await sleep(500)
+                                upload.removeEventListener('click', handle)
+                                setFile(upload, `${tracking_number}.pdf`, dataSource)
+                            }
+                        }
+                    }
+                }
             }
         }, 1500)
     }
     let isCheckPage = false
-    document.body.addEventListener('mousemove', throttle(() => {
+    const fn = (force) => {
         if (checkoutUrls.some((url) => window.location.href.includes(url))) {
-            if (!isCheckPage || !hasData) {setTimeout(() => {document.hasFocus(); handle()}, 1000)}
-            app.classList.remove('hide')
+            if (!isCheckPage || !hasData || force) {setTimeout(() => {document.hasFocus(); handle()}, 1000)}
             isCheckPage = true
         } else {
             isCheckPage = false
             app.classList.add('hide')
         }
-    }, 1500))
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && checkoutUrls.some((url) => window.location.href.includes(url))) {
-            setTimeout(() => {
-                document.hasFocus(); handle()
-            }, 1500)
-        } 
-    })
+    }
+    document.body.addEventListener('mousemove', throttle(() => fn(), 1500))
+    const loadedFn = () => {
+        setTimeout(() => fn(true), 1000)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                setTimeout(() => fn(true), 1000)
+            } 
+        })
+    }
+    if (document.readyState === 'complete') {
+        loadedFn();
+    } else {
+        window.addEventListener('load', loadedFn)
+    }
     app.addEventListener('click', async (e) => {
         if(e.target.classList.contains('addr_item_value')) {copyToClipboard(e.target.innerText)}
     })
