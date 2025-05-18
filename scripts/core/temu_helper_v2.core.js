@@ -1033,7 +1033,7 @@ window.temu_helper_v2_core = async () => {
             align-items: center;
             gap: 8px;
             position: fixed;
-            right: 0px;
+            left: 0px;
             bottom: 0px;
             z-index: 999;
             border: 1px solid #999;
