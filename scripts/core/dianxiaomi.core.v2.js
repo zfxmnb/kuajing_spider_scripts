@@ -342,12 +342,12 @@ window.dianxiaomi_core = async () => {
                     firstCategory?.click()
                 } else {
                     category?.closest?.('.ant-select')?.nextElementSibling?.click?.()
-                    await sleep(100)
+                    await sleep(200);
                     const searchCategory = document.querySelector('[name="searchCategory"]')
                     if (searchCategory) {
                         searchCategory.value = '室外水箱'
                         searchCategory?.dispatchEvent?.(new Event('change'))
-                        await sleep(100)
+                        await sleep(200);
                         searchCategory?.nextElementSibling?.querySelector('button')?.click?.()
                         await sleep(2500)
                         searchCategory.closest('.modal-body')?.querySelector('.search-result-item')?.click()
@@ -380,10 +380,10 @@ window.dianxiaomi_core = async () => {
         const imgeButton = imageCon.querySelector('button')
         if (imgeButton) {
             imgeButton?.dispatchEvent?.(new Event('mouseenter'))
-            await sleep(100)
+            await sleep(200);
             getGlobalEle('[data-menu-id="net"]')?.click?.()
             imgeButton?.dispatchEvent?.(new Event('mouseleave'))
-            await sleep(100)
+            await sleep(200);
             const netImgUrl = getGlobalEle('[placeholder="请填写图片URL地址，多个地址用回车换行"]')
             const detail_images = payload?.detail_images ?? []
             let list = [...(payload?.images ?? [])]
@@ -401,12 +401,12 @@ window.dianxiaomi_core = async () => {
             }
             setInput(netImgUrl, list.join('\n'))
             netImgUrl.dispatchEvent?.(new Event('change'))
-            await sleep(100);
+            await sleep(200);
             netImgUrl?.closest?.('.ant-modal-wrap')?.querySelector('.ant-btn-primary')?.click?.()
-            await sleep(1500);
+            await sleep(2500);
             const imageEditButton = imageCon.querySelector('.img-options .action-item:nth-child(2) a')
             imageEditButton?.dispatchEvent?.(new Event('mouseenter'))
-            await sleep(100)
+            await sleep(200);
             const dropdown = getGlobalEle('.ant-dropdown')
             if (dropdown) {
                 dropdown.querySelector('.ant-dropdown-menu-item')?.click()
@@ -430,7 +430,7 @@ window.dianxiaomi_core = async () => {
             if (!colorCheckbox) {
                 const colorInput = colorCon.querySelector('.ant-input')
                 setInput(colorInput, payload.colors?.[0] ?? 'unknown')
-                await sleep(100)
+                await sleep(200);
                 colorInput?.nextElementSibling?.click?.()
                 await sleep(1000)
             }
@@ -445,13 +445,13 @@ window.dianxiaomi_core = async () => {
         const skuWarehouse = document.querySelector('#skuDataInfo .skuWarehouse')
         if (skuWarehouse && !skuWarehouse.querySelector('.ant-select-selection-item')) {
             const skuWarehouseSelector = skuWarehouse.querySelector('.ant-select-selector')
-            await sleep(100)
+            await sleep(200);
             skuWarehouseSelector?.dispatchEvent?.(new Event('mousedown'))
             await sleep(1500)
             const dropdown = getGlobalEle('.ant-select-dropdown')
             dropdown.querySelector?.('.rc-virtual-list .ant-select-item')?.click?.()
             skuWarehouseSelector.querySelector('input')?.dispatchEvent?.(new Event('blur'))
-            await sleep(100)
+            await sleep(200);
             setInput('#skuDataInfo .skuWarehouse [name="stock"]', payload.stock)
         }
         // 变种图片
@@ -459,14 +459,14 @@ window.dianxiaomi_core = async () => {
         if (!imgCloseIcon) {
             const skuImage = document.querySelector('#skuDataInfo .skuDataTable .sku-image .img-box')
             skuImage?.dispatchEvent?.(new Event('mouseenter'))
-            await sleep(100)
+            await sleep(200);
             getGlobalEle('.ant-dropdown [data-menu-id="product"]')?.click?.();
             skuImage?.dispatchEvent?.(new Event('mouseleave'))
             await sleep(500)
             const selectProductImageCheckbox = getGlobalEle('.ant-modal-wrap .ant-checkbox-group .ant-checkbox-input')
             if (selectProductImageCheckbox) {
                 selectProductImageCheckbox?.click?.()
-                await sleep(100)
+                await sleep(200);
                 selectProductImageCheckbox?.closest?.('.ant-modal-content')?.querySelector('.ant-btn-primary')?.click?.()
                 await sleep(500)
             }
@@ -488,10 +488,10 @@ window.dianxiaomi_core = async () => {
             const packageImageButton = packageImageCon.querySelector('button')
             if (packageImageButton) {
                 packageImageButton?.dispatchEvent?.(new Event('mouseenter'))
-                await sleep(100)
+                await sleep(200);
                 getGlobalEle('[data-menu-id="net"]')?.click?.()
                 packageImageButton?.dispatchEvent?.(new Event('mouseleave'))
-                await sleep(100)
+                await sleep(200);
                 const netImgUrl = getGlobalEle('[placeholder="请填写图片URL地址，多个地址用回车换行"]')
                 setInput(netImgUrl, 'https://img.myshopline.com/image/official/477168e554ab409cad55a46005699cf1.jpeg')
                 netImgUrl?.closest?.('.ant-modal-content')?.querySelector('.ant-btn-primary')?.click?.()
