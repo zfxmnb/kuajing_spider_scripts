@@ -722,6 +722,16 @@ window.temu_helper_v2_core = async () => {
     }
 
     async function getAddress (parent_order_sn) {
+        try {
+            await fetch('/kirogi/bg/mms/sellerNotes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    "mallid": await getMallId(),
+                },
+                body: `{"noteReasonType":1,"parentOrderSn":"${parent_order_sn}","noteSourceType":2}`
+            })
+        } catch(err) {console.error(err)}
         return await fetch('/mms/orchid/address/snapshot/order_shipping_address_query', {
             method: 'POST',
             headers: {
