@@ -379,8 +379,14 @@ window.common_plugin_core = async () => {
                 const sale_platform = new URLSearchParams(location.search).get('sale_platform') || 'Temu'
                 document.querySelector('#salePlatforms').nextElementSibling.querySelector(`dd[lay-value="${sale_platform}"]`).click()
                 document.querySelector('.other_order_information .order-referno').value = data?.parent_order_sn
-                document.querySelector('#tr_platformServices [value="BX0001"]').nextElementSibling.click()
-                document.querySelector('#tr_platformServices [value="BX0002"]')?.nextElementSibling?.click?.()
+                const BX0001 = document.querySelector('#tr_platformServices [value="BX0001"]')
+                if (BX0001 && BX0001?.checked) {
+                    BX0001?.nextElementSibling.click()
+                }
+                const BX0002 = document.querySelector('#tr_platformServices [value="BX0002"]')
+                if (BX0002 && BX0002?.checked) {
+                    BX0002?.nextElementSibling.click()
+                }
                 if (data?.packagesData?.length) {
                     for(var i = 0; i < data?.packagesData?.length; i++) {
                         const { tracking_number, ship_company_name, ship_logistics_type, dataSource } = data?.packagesData[i] ?? {}
