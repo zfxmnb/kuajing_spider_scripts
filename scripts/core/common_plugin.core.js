@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-    console.log('common_plugin_core running', '202505170026')
+    console.log('common_plugin_core running', '202505212347')
     const matchDomains = ['www.gigab2b.com', 'www.saleyee.cn', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'returnhelper.com', 'oms.xlwms.com']
     // 一下内容在指定域名下生效
     if (!matchDomains.includes(window.location.host)) {return}
@@ -106,6 +106,21 @@ window.common_plugin_core = async () => {
         ele.files = dataTransfer.files;
         ele.dispatchEvent(new Event('change', { bubbles: true }));
     }
+    const setInput = (selector, value) => {
+        const ele = selector instanceof Element ? selector : document.querySelector(selector)
+        if (ele) {
+            ele.value = value
+            ele.dispatchEvent?.(new Event('input'))
+        }
+    }
+    const judgmentDisplay = (ele) => {
+        if (!ele?.getBoundingClientRect || !ele?.isConnected) return false
+        const rect = ele?.getBoundingClientRect?.()
+        return !!(rect?.width || rect?.height)
+    }
+    const getGlobalEle = (selector, forward) => {
+       return forward ? [...document.querySelectorAll(selector)].find((ele) => judgmentDisplay(ele)): [...document.querySelectorAll(selector)].reverse().find((ele) => judgmentDisplay(ele))
+    }
     const inputEvent = new Event('input', {
         'bubbles': true,
         'cancelable': true
@@ -150,7 +165,7 @@ window.common_plugin_core = async () => {
         const matchedNodes = [];
         let node
         while ((node = matchingTextNodes.iterateNext())) {
-            matchedNodes.push(node.parentElement);
+            parent.contains(node) && matchedNodes.push(node.parentElement);
         }
         return matchedNodes
     }
@@ -373,6 +388,9 @@ window.common_plugin_core = async () => {
         if (window.location.href.includes(goodcangCheckout)) {
             html+=`<div><a class="goodcang_checkout_import">一键导入</a></div>`
         }
+        if (window.location.href.includes(xlwmsCheckout)) {
+            html+=`<div><a class="xlwms_checkout_import">一键导入</a></div>`
+        }
         app.innerHTML = html
         setTimeout(async () => {
             if (window.location.href.includes(saleCheckout) && document.querySelector('.alladdress li.active')) {
@@ -453,7 +471,7 @@ window.common_plugin_core = async () => {
         if(e.target.classList.contains('addr_item_value')) {copyToClipboard(e.target.innerText)}
     })
     app.addEventListener('click', async (e) => {
-        if(e.target.closest('.sale_checkout_import')) {
+        if (e.target.closest('.sale_checkout_import')) {
             const ca = document.body.querySelector('.choose_address_container')
             const data = app.dataSource
             if (ca && data) {
@@ -472,7 +490,7 @@ window.common_plugin_core = async () => {
                 ca.querySelector('.save_address_container button').click()
             }
         }
-        if(e.target.closest('.topwms_checkout_import')) {
+        if (e.target.closest('.topwms_checkout_import')) {
             const data = app.dataSource
             if (data) {
                 const orderSnEle = document.querySelector('[placeholder="若不填写，将自动生成订单号"]')
@@ -510,7 +528,7 @@ window.common_plugin_core = async () => {
                 addressEle.dispatchEvent(inputEvent)
             }
         }
-        if(e.target.closest('.goodcang_checkout_import')) {
+        if (e.target.closest('.goodcang_checkout_import')) {
             const data = app.dataSource
             if (data) {
                 await new Promise((r) => setTimeout(r, 1))
@@ -552,5 +570,76 @@ window.common_plugin_core = async () => {
 
             }
         }
+        if (e.target.closest('.xlwms_checkout_import')) {
+            const data = app.dataSource
+            const {tracking_number, ship_company_name, ship_logistics_type, dataSource, shipping_label_url} = data?.packagesData?.[0] ?? {}
+            const cangkuInput = document.querySelector('[for="whCode"]')?.nextElementSibling?.querySelector('input')
+            if (cangkuInput && !cangkuInput?.value) {
+                cangkuInput?.click?.()
+                await sleep(400)
+                getGlobalEle('.el-select-dropdown__item', 1)?.click()
+            }
+            const logisticsChannelInput = document.querySelector('[for="logisticsChannel"]')?.nextElementSibling?.querySelector('input')
+            if (logisticsChannelInput && !logisticsChannelInput?.value) {
+                logisticsChannelInput?.click?.()
+                await sleep(400)
+                getGlobalEle('.el-select-dropdown__item', 1)?.click()
+            }
+            await sleep(400)
+            const logisticsCarrierInput = document.querySelector('[for="logisticsCarrier"]')?.nextElementSibling?.querySelector('input')
+            if (logisticsCarrierInput && !logisticsCarrierInput?.value) {
+                logisticsCarrierInput?.click?.()
+                await sleep(400)
+                const dropdown__list = getGlobalEle('.el-select-dropdown__list', 1)
+                dropdown__list && ship_company_name && findElementsByText(ship_company_name, dropdown__list)?.[0]?.click()
+            }
+            const logisticsSheetInput = document.querySelector('[for="logisticsSheet"]')?.nextElementSibling?.querySelector('input')
+            if (logisticsSheetInput && !logisticsSheetInput?.files?.length) {
+                const handle = (e) => {e.preventDefault();}
+                logisticsSheetInput.addEventListener('click', handle)
+                logisticsSheetInput.previousElementSibling?.click()
+                setFile(logisticsSheetInput, `${tracking_number}.pdf`, dataSource)
+                await sleep(400)
+                logisticsSheetInput.removeEventListener('click', handle)
+            }
+            setInput(document.querySelector('[for="trackNo"]')?.nextElementSibling?.querySelector('input'), tracking_number)
+            const salesPlatformInput = document.querySelector('[for="salesPlatform"]')?.nextElementSibling?.querySelector('input')
+            if (salesPlatformInput && !salesPlatformInput?.value) {
+                salesPlatformInput?.click?.()
+                await sleep(400)
+                const dropdown__list = getGlobalEle('.el-select-dropdown__list', 1)
+                dropdown__list && findElementsByText('Temu', dropdown__list)?.[0]?.click()
+            }
+            setInput(document.querySelector('[for="platformOrderNo"]')?.nextElementSibling?.querySelector('input'), data.parent_order_sn)
+            const platformOrderNoInput = document.querySelector('[for="platformOrderNo"]')?.nextElementSibling?.querySelector('input')
+            if (platformOrderNoInput) {setInput(platformOrderNoInput, data.parent_order_sn)}
+
+            setInput(document.querySelector('[for="receiver"]')?.nextElementSibling?.querySelector('input'), data.receipt_name)
+            setInput(document.querySelector('[for="telephone"]')?.nextElementSibling?.querySelector('input'), data.mobile)
+            data.email && setInput(document.querySelector('[for="email"]')?.nextElementSibling?.querySelector('input'), data.email)
+            const countryRegionCodeInput = document.querySelector('[for="countryRegionCode"]')?.nextElementSibling?.querySelector('input')
+            if (countryRegionCodeInput && !countryRegionCodeInput?.value) {
+                countryRegionCodeInput?.click?.()
+                await sleep(400)
+                getGlobalEle('.el-select-dropdown__item', 1)?.click()
+                setTimeout(async () => {
+                    const provinceCodeInput = document.querySelector('[for="provinceCode"]')?.nextElementSibling?.querySelector('input')
+                    if (provinceCodeInput && data.region_name2) {
+                        provinceCodeInput?.click?.()
+                        await sleep(400)
+                        const dropdown__list = getGlobalEle('.el-select-dropdown__list', 1)
+                        dropdown__list && ship_company_name && findElementsByText(` (${data.region_name2})`, dropdown__list)?.[0]?.click()
+                    }
+                }, 1000)
+            }
+            setInput(document.querySelector('[for="cityName"]')?.nextElementSibling?.querySelector('input'), data.region_name3)
+            setInput(document.querySelector('[for="postCode"]')?.nextElementSibling?.querySelector('input'), data.post_code)
+            setInput(document.querySelector('[for="addressOne"]')?.nextElementSibling?.querySelector('textarea'), data.address_line1)
+            data.address_line2 && setInput(document.querySelector('[for="addressTwo"]')?.nextElementSibling?.querySelector('textarea'), data.address_line2)
+        }
     })
 }
+
+// (async function() {
+//     common_plugin_core();
+// })();
