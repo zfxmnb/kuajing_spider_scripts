@@ -405,38 +405,47 @@ window.common_plugin_core = async () => {
                 if (BX0002 && BX0002?.checked) {
                     BX0002?.nextElementSibling.click()
                 }
-                if (data?.packagesData?.length) {
-                    for(var i = 0; i < data?.packagesData?.length; i++) {
-                        const { tracking_number, ship_company_name, ship_logistics_type, dataSource } = data?.packagesData[i] ?? {}
-                        if (i) {
-                            document.querySelector('.add_pick_up')?.click()
-                            await sleep(100)
+                if (data?.packagesData?.length && document.querySelector(`.pick_up_table tbody`)) {
+                    const hasData = !!document.querySelector(`.pick_up_table tbody tr [name="TrackingNo"])`)?.value
+                    if (!hasData) {
+                        let currentLen = document.querySelectorAll(`.pick_up_table tbody tr`)?.length || 0
+                        for(var i = currentLen; i < data?.packagesData?.length; i++) {
+                            document.querySelector('.add_pick_up')?.click?.()
                         }
-                        const tr = document.querySelector(`.pick_up_table tbody tr:nth-child(${i + 1})`)
-                        if (tr) {
-                            const selectorList = []
-                            if (ship_company_name && ship_logistics_type) {
-                                const company = ship_company_name.toUpperCase()
-                                let type = ship_logistics_type
-                                if (type === 'ground economy') {type = 'economy'}
-                                const types = type?.split(' ') ?? []
-                                selectorList.push(`dd[lay-value="${company}_${types.join('_').toUpperCase()}"]`)
-                                selectorList.push(`dd[lay-value="${company} ${type}"]`)
-                                tr.querySelector(selectorList.join(','))?.click()
+                        await sleep(100)
+                        currentLen = document.querySelectorAll(`.pick_up_table tbody tr`)?.length || 0
+                        for(var i = 0; i < currentLen; i++) {
+                            const { tracking_number, ship_company_name, ship_logistics_type, dataSource } = data?.packagesData[i] ?? {}
+                            const tr = document.querySelector(`.pick_up_table tbody tr:nth-child(${i + 1})`)
+                            if (tr) {
+                                const selectorList = []
+                                if (ship_company_name && ship_logistics_type) {
+                                    const company = ship_company_name.toUpperCase()
+                                    let type = ship_logistics_type
+                                    if (type === 'ground economy') {type = 'economy'}
+                                    const types = type?.split(' ') ?? []
+                                    selectorList.push(`dd[lay-value="${company}_${types.join('_').toUpperCase()}"]`)
+                                    selectorList.push(`dd[lay-value="${company} ${type}"]`)
+                                    tr.querySelector(selectorList.join(','))?.click()
+                                }
+                                const trackingNo = tr.querySelector('[name="TrackingNo"]')
+                                if (trackingNo) {
+                                    trackingNo.value = tracking_number;
+                                }
+                                const upload = tr.querySelector('.layui-upload-file')
+                                if (upload) {
+                                    const handle = (e) => {e.preventDefault();}
+                                    upload.addEventListener('click', handle)
+                                    tr.querySelector(`.uploadPickUpLabel`)?.click()
+                                    await sleep(500)
+                                    upload.removeEventListener('click', handle)
+                                    setFile(upload, `${tracking_number}.pdf`, dataSource)
+                                }
                             }
-                            const trackingNo = tr.querySelector('[name="TrackingNo"]')
-                            if (trackingNo) {
-                                trackingNo.value = tracking_number;
-                            }
-                            const upload = tr.querySelector('.layui-upload-file')
-                            if (upload) {
-                                const handle = (e) => {e.preventDefault();}
-                                upload.addEventListener('click', handle)
-                                tr.querySelector(`.uploadPickUpLabel`)?.click()
-                                await sleep(500)
-                                upload.removeEventListener('click', handle)
-                                setFile(upload, `${tracking_number}.pdf`, dataSource)
-                            }
+                        }
+                        const editTd = document.querySelector('.pick_up_table tbody tr td:last-child')
+                        if (!editTd.querySelector('.del_pick_up')) {
+                            editTd.appendChild(document.querySelector('.pick_up_table tbody tr .del_pick_up'))
                         }
                     }
                 }
