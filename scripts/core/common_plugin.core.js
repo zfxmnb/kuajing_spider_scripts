@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-    console.log('common_plugin_core running', '202505251539')
+    console.log('common_plugin_core running', '202505251459')
     const matchDomains = ['www.gigab2b.com', 'www.saleyee.cn', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'returnhelper.com', 'oms.xlwms.com']
     // 一下内容在指定域名下生效
     if (!matchDomains.includes(window.location.host)) {return}
@@ -445,7 +445,7 @@ window.common_plugin_core = async () => {
                         }
                         const editTd = document.querySelector('.pick_up_table tbody tr td:last-child')
                         if (!editTd.querySelector('.del_pick_up') && document.querySelector('.pick_up_table tbody tr .del_pick_up')) {
-                            editTd.appendChild(document.querySelector('.pick_up_table tbody tr .del_pick_up').cloneNode())
+                            editTd.appendChild(document.querySelector('.pick_up_table tbody tr .del_pick_up').cloneNode(true))
                         }
                     }
                 }
