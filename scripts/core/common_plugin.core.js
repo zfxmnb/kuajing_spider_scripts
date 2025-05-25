@@ -406,7 +406,7 @@ window.common_plugin_core = async () => {
                     BX0002?.nextElementSibling.click()
                 }
                 if (data?.packagesData?.length && document.querySelector(`.pick_up_table tbody`)) {
-                    const hasData = !!document.querySelector(`.pick_up_table tbody tr [name="TrackingNo"])`)?.value
+                    const hasData = !!document.querySelector(`.pick_up_table tbody tr [name="TrackingNo"]`)?.value
                     if (!hasData) {
                         let currentLen = document.querySelectorAll(`.pick_up_table tbody tr`)?.length || 0
                         for(var i = currentLen; i < data?.packagesData?.length; i++) {
