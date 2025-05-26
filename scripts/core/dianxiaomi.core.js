@@ -1,5 +1,5 @@
 window.dianxiaomi_core = async () => {
-    console.log('dianxiaomi_core running', '202505121849')
+    console.log('dianxiaomi_core running', '202505261317')
     function styles(content){
         const style = document.createElement('style');
         style.innerText = content
@@ -33,6 +33,10 @@ window.dianxiaomi_core = async () => {
             console.error('Failed to copy text: ', err);
         }
     }
+    // 浮点格式化
+    function numberFixed (num, d = 2) {
+        return Number(Number(num).toFixed(d)) || 0
+    }
     const queryAll = (...args) => document.querySelectorAll(...args)
     const query = (...args) => document.querySelector(...args) ?? {}
     let payload
@@ -43,12 +47,16 @@ window.dianxiaomi_core = async () => {
         position: fixed;
         left: 0px;
         bottom: 0px;
-        z-index: 0;
+        z-index: 999;
         background: #fff;
         border: 1px solid #999;
         border-radius: 3px;
         padding: 6px;
         opacity: 0.7;
+    }
+    .dianxiaomi_plugin input {
+        font-size: 12px;
+        width: 40px;
     }
     .dianxiaomi_plugin a, #dianxiaomi_plugin_drawer a {
         cursor: pointer;
@@ -109,7 +117,7 @@ window.dianxiaomi_core = async () => {
     }
     `)
     const root = html(`
-    <div class="dianxiaomi_plugin"><a id="dianxiaomi_payload">读取剪切板</a><a class="hide" id="dianxiaomi_open">打开面板</a><a class="hide" id="dianxiaomi_import">一键导入</a></div>
+    <div class="dianxiaomi_plugin"><span>报价倍率:<input type="number" min="1" max="10" step="1" id="dianxiaomi_price_rate_input" value="1"/></span><span>库存倍率:<input type="number" min="0" max="1" step="0.1" id="dianxiaomi_stock_rate_input" value="1"/></span><a id="dianxiaomi_payload">读取剪切板</a><a class="hide" id="dianxiaomi_open">打开面板</a><a class="hide" id="dianxiaomi_import">一键导入</a></div>
     <div id="dianxiaomi_plugin_drawer" class="hide">
     <a id="dianxiaomi_plugin_drawer_close">X</a>
     <div id="dianxiaomi_plugin_drawer_content"></div>
@@ -118,10 +126,18 @@ window.dianxiaomi_core = async () => {
     const drawer = root.querySelector('#dianxiaomi_plugin_drawer')
     const drawerClose = root.querySelector('#dianxiaomi_plugin_drawer_close')
     const drawerContent = root.querySelector('#dianxiaomi_plugin_drawer_content')
+    const priceRateInput = root.querySelector('#dianxiaomi_price_rate_input')
+    const stockRateInput = root.querySelector('#dianxiaomi_stock_rate_input')
     const openBtn = root.querySelector('#dianxiaomi_open')
     const importBtn = root.querySelector('#dianxiaomi_import')
     const payloadBtn = root.querySelector('#dianxiaomi_payload')
     let copyMap = []
+    let priceRate = Number(window.localStorage?.getItem?.('__price_rate__'))
+    priceRate = isNaN(priceRate) ? 1 : priceRate
+    priceRateInput && (priceRateInput.value = priceRate)
+    let stockRate = Number(window.localStorage?.getItem?.('__stock_rate__'))
+    stockRate = isNaN(stockRate) ? 1 : stockRate
+    stockRateInput && (stockRateInput.value = stockRate)
     const parseItem = (title, content, value, nocopy) => {
         const index=copyMap.length
         copyMap.push(value)
@@ -199,6 +215,20 @@ window.dianxiaomi_core = async () => {
         drawer?.classList?.add?.('hide')
         document.body.classList.remove('marginLeft275')
     })
+    priceRateInput?.addEventListener('change', (e) => {
+        const value = Number(e.target?.value)
+        if (!isNaN(value)) {
+            priceRate = value
+            window.localStorage?.setItem?.('__price_rate__', value)
+        }
+    })
+    stockRateInput?.addEventListener('change', (e) => {
+        const value = Number(e.target?.value)
+        if (!isNaN(value)) {
+            stockRate = value
+            window.localStorage?.setItem?.('__stock_rate__', value)
+        }
+    })
     
     await (async () => {
         if (window.location.search === '?collection=1') {
@@ -255,7 +285,7 @@ window.dianxiaomi_core = async () => {
             sleep(100)
             colorInput.nextElementSibling.click()
             sleep(500)
-            query('.skuInfoTable [name="price"]').value = payload.price_CNY
+            query('.skuInfoTable [name="price"]').value = numberFixed(payload.price_CNY * priceRate)
             query('.skuInfoTable [name="skuLength"]').value = payload.size?.[0]
             query('.skuInfoTable [name="skuWidth"]').value = payload.size?.[1]
             query('.skuInfoTable [name="skuHeight"]').value = payload.size?.[2]
@@ -265,7 +295,7 @@ window.dianxiaomi_core = async () => {
                 skuWarehouseSel?.click?.()
             }
             await sleep(100)
-            query('.skuOtherInfoList [name="stock"]').value = payload.stock
+            query('.skuOtherInfoList [name="stock"]').value = numberFixed(payload.stock * stockRate, 0)
         }
         query('#packageShape').selectedIndex = 2
         query('#packageType').selectedIndex = 1
@@ -393,3 +423,7 @@ window.dianxiaomi_core = async () => {
         }
     })
 }
+
+// (async function() {
+//     dianxiaomi_core();
+// })();

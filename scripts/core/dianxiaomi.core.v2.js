@@ -1,7 +1,7 @@
 let runed = false
 window.dianxiaomi_core = async () => {
     if (runed) true
-    console.log('dianxiaomi_core_v2 running', '2025051111')
+    console.log('dianxiaomi_core_v2 running', '202505261317')
     runed = true
     function styles(content){
         const style = document.createElement('style');
@@ -44,6 +44,10 @@ window.dianxiaomi_core = async () => {
         } catch (err) {
             console.error('Failed to read clipboard contents:', err);
         }
+    }
+    // 浮点格式化
+    function numberFixed (num, d = 2) {
+        return Number(Number(num).toFixed(d)) || 0
     }
     async function copyToClipboard(text) {
         try {
@@ -146,6 +150,10 @@ window.dianxiaomi_core = async () => {
         padding: 6px;
         opacity: 0.7;
     }
+    .dianxiaomi_plugin input {
+        font-size: 12px;
+        width: 40px;
+    }
     .dianxiaomi_plugin a, #dianxiaomi_plugin_drawer a {
         cursor: pointer;
         color: #000;
@@ -205,7 +213,7 @@ window.dianxiaomi_core = async () => {
     }
     `)
     const root = html(`
-    <div class="dianxiaomi_plugin"><a id="dianxiaomi_payload">读取剪切板</a><a class="hide" id="dianxiaomi_open">打开面板</a><a class="hide" id="dianxiaomi_import">一键导入</a></div>
+    <div class="dianxiaomi_plugin"><span>报价倍率:<input type="number" min="1" max="10" step="1" id="dianxiaomi_price_rate_input" value="1"/></span><span>库存倍率:<input type="number" min="0" max="1" step="0.1" id="dianxiaomi_stock_rate_input" value="1"/></span><a id="dianxiaomi_payload">读取剪切板</a><a class="hide" id="dianxiaomi_open">打开面板</a><a class="hide" id="dianxiaomi_import">一键导入</a></div>
     <div id="dianxiaomi_plugin_drawer" class="hide">
     <a id="dianxiaomi_plugin_drawer_close">X</a>
     <div id="dianxiaomi_plugin_drawer_content"></div>
@@ -214,10 +222,18 @@ window.dianxiaomi_core = async () => {
     const drawer = root.querySelector('#dianxiaomi_plugin_drawer')
     const drawerClose = root.querySelector('#dianxiaomi_plugin_drawer_close')
     const drawerContent = root.querySelector('#dianxiaomi_plugin_drawer_content')
+    const priceRateInput = root.querySelector('#dianxiaomi_price_rate_input')
+    const stockRateInput = root.querySelector('#dianxiaomi_stock_rate_input')
     const openBtn = root.querySelector('#dianxiaomi_open')
     const importBtn = root.querySelector('#dianxiaomi_import')
     const payloadBtn = root.querySelector('#dianxiaomi_payload')
     let copyMap = []
+    let priceRate = Number(window.localStorage?.getItem?.('__price_rate__'))
+    priceRate = isNaN(priceRate) ? 1 : priceRate
+    priceRateInput && (priceRateInput.value = priceRate)
+    let stockRate = Number(window.localStorage?.getItem?.('__stock_rate__'))
+    stockRate = isNaN(stockRate) ? 1 : stockRate
+    stockRateInput && (stockRateInput.value = stockRate)
     const parseItem = (title, content, value, nocopy) => {
         const index=copyMap.length
         copyMap.push(value)
@@ -294,6 +310,20 @@ window.dianxiaomi_core = async () => {
     drawerClose?.addEventListener?.('click', async () => {
         drawer?.classList?.add?.('hide')
         document.body.classList.remove('marginLeft275')
+    })
+    priceRateInput?.addEventListener('change', (e) => {
+        const value = Number(e.target?.value)
+        if (!isNaN(value)) {
+            priceRate = value
+            window.localStorage?.setItem?.('__price_rate__', value)
+        }
+    })
+    stockRateInput?.addEventListener('change', (e) => {
+        const value = Number(e.target?.value)
+        if (!isNaN(value)) {
+            stockRate = value
+            window.localStorage?.setItem?.('__stock_rate__', value)
+        }
     })
 
     await (async () => {
@@ -437,7 +467,7 @@ window.dianxiaomi_core = async () => {
         }
         // 变种信息
         setInput('#skuDataInfo .skuDataTable [name="variationSku"]', payload.skuId)
-        setInput('#skuDataInfo .skuDataTable [name="price"]', payload.price_CNY)
+        setInput('#skuDataInfo .skuDataTable [name="price"]', numberFixed(payload.price_CNY * priceRate))
         setInput('#skuDataInfo .skuDataTable [name="skuLength"]', payload.size?.[0])
         setInput('#skuDataInfo .skuDataTable [name="skuWidth"]', payload.size?.[1])
         setInput('#skuDataInfo .skuDataTable [name="skuHeight"]', payload.size?.[2])
@@ -452,7 +482,7 @@ window.dianxiaomi_core = async () => {
             dropdown.querySelector?.('.rc-virtual-list .ant-select-item')?.click?.()
             skuWarehouseSelector.querySelector('input')?.dispatchEvent?.(new Event('blur'))
             await sleep(200);
-            setInput('#skuDataInfo .skuWarehouse [name="stock"]', payload.stock)
+            setInput('#skuDataInfo .skuWarehouse [name="stock"]', numberFixed(payload.stock * stockRate, 0))
         }
         // 变种图片
         const imgCloseIcon = document.querySelector('#skuDataInfo .skuDataTable .img-close-icon')
@@ -568,3 +598,7 @@ window.dianxiaomi_core = async () => {
         }
     })
 }
+
+// (async function() {
+//     dianxiaomi_core();
+// })();
