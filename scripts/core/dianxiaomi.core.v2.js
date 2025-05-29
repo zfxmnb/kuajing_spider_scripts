@@ -483,7 +483,7 @@ window.dianxiaomi_core = async () => {
             setTimeout(() => getGlobalEle('.rc-virtual-list [title="硬包装"]')?.click?.(), 100)
         }
         const packageImgItem = document.querySelector('#packageInfo .img-list .img-item')
-        if (!packageImgItem) {
+        if (innerPackageSelector && !packageImgItem) {
             const packageImageCon = document.querySelector('#packageInfo .ant-form-item label[title="外包装图片"]')?.closest('.ant-form-item')
             const packageImageButton = packageImageCon.querySelector('button')
             if (packageImageButton) {
