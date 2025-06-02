@@ -18,7 +18,7 @@ window.temu_helper_v2_core = async () => {
     const Port = ConfigMap[mallId]?.Port || ConfigMap['default']?.Port || 5431  // 本地服务端口
     const User = ConfigMap[mallId]?.User || ConfigMap['default']?.User // 账号
     const Password = ConfigMap[mallId]?.Password || ConfigMap['default']?.Password // 密码
-    const Host = '127.0.0.1' // host
+    const Host = ConfigMap[mallId]?.Host || ConfigMap['default']?.Host || '127.0.0.1' // host
     const Origin = `http://${Host}:${Port}`
     const pollingInterval = 15 * 60 * 1000 + Math.round(Math.random() * 15 * 1000) // 轮询代发货订单及平台处理中订单
     const oneDay = 24 * 60 * 60 * 1000
