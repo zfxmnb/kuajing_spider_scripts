@@ -7,18 +7,13 @@ window.temu_helper_v2_core = async () => {
     } catch(err) {console.error(err)}
     // -----------------------------------------------------------------------------
     // 配置
-    const ConfigMap = unsafeWindow.top._temu_helper_config_map_ || window.top._temu_helper_config_map_ || { // 端口map
-        "default": {
-            Name: "",
-            Port: 5431,
-        }, // 默认端口
-        // ...可以补充其他店铺端口
-    }
-    const Name = ConfigMap[mallId]?.Name || ConfigMap['default']?.Name || ""  // 本地服务端口
-    const Port = ConfigMap[mallId]?.Port || ConfigMap['default']?.Port || 5431  // 本地服务端口
-    const User = ConfigMap[mallId]?.User || ConfigMap['default']?.User // 账号
-    const Password = ConfigMap[mallId]?.Password || ConfigMap['default']?.Password // 密码
-    const Host = ConfigMap[mallId]?.Host || ConfigMap['default']?.Host || '127.0.0.1' // host
+    const ConfigMap = unsafeWindow.top._temu_helper_config_map_ || window.top._temu_helper_config_map_
+    const config = ConfigMap?.[mallId] || ConfigMap?.['default']
+    const Name = config?.Name || ""  // 本地服务端口
+    const Port = config?.Port || 5431  // 本地服务端口
+    // const User = config?.User // 账号
+    // const Password = config?.Password // 密码
+    const Host = config?.Host || '127.0.0.1' // host
     const Origin = `http://${Host}:${Port}`
     const pollingInterval = 15 * 60 * 1000 + Math.round(Math.random() * 15 * 1000) // 轮询代发货订单及平台处理中订单
     const oneDay = 24 * 60 * 60 * 1000
@@ -1148,20 +1143,20 @@ window.temu_helper_v2_core = async () => {
             color: #fe9e0f;
         }
         `)
-        const root = html(`<div class="temu_plugin">
-            <a id="temu_products_time" class="hide"></a>
-            <a id="temu_products_reduction" class="hide">批量改价</a>
-            <a id="temu_products_pull" class="hide">刷新库存</a>
-            <a id="temu_products_sync" class="hide" title="双击全量同步商品">在售同步(双击全量)</a>
-            <a id="temu_spider" class="hide">执行爬虫</a>
-            <a id="temu_download" download class="hide">商品xlsx</a>
-            &nbsp;
-            <a id="temu_orders_time" class="hide"></a>
-            <a id="temu_orders_sync_cover" class="hide" title="双击全量同步订单">订单同步(双击全量)</a>
-            <a id="temu_orders_sync_checkout" class="hide" title="1小时内只爬取一次结算数据">结算同步</a>
-            <a id="temu_order_download" download class="hide">订单xlsx</a>
-            <a id="temu_orders_statistics" class="hide"></a>
-        </div>`)
+    const root = html(`<div class="temu_plugin">
+        <a id="temu_products_time" class="hide"></a>
+        <a id="temu_products_reduction" class="hide">批量改价</a>
+        <a id="temu_products_pull" class="hide">刷新库存</a>
+        <a id="temu_products_sync" class="hide" title="双击全量同步商品">在售同步(双击全量)</a>
+        <a id="temu_spider" class="hide">执行爬虫</a>
+        <a id="temu_download" download class="hide">商品xlsx</a>
+        &nbsp;
+        <a id="temu_orders_time" class="hide"></a>
+        <a id="temu_orders_sync_cover" class="hide" title="双击全量同步订单">订单同步(双击全量)</a>
+        <a id="temu_orders_sync_checkout" class="hide" title="1小时内只爬取一次结算数据">结算同步</a>
+        <a id="temu_order_download" download class="hide">订单xlsx</a>
+        <a id="temu_orders_statistics" class="hide"></a>
+    </div>`)
     function productUpdate() {
         // console.log('商品视图更新')
         document.querySelectorAll('.temu_plugin_sku_extra').forEach((ele) => {
@@ -1414,65 +1409,69 @@ window.temu_helper_v2_core = async () => {
         }
         document.addEventListener('visibilitychange', handleVisibilityChange);
     }
+    function commonInit () {
+        if (agentSeller) {
+            const addressMap = {}
+            document.body.addEventListener('dblclick', async (e) => {
+                const firstNode = e.target.childNodes?.[0]
+                const text = firstNode?.nodeType === 3 ? firstNode?.nodeValue : null
+                if (text && text.match(/^\w+\-\d+\-\d+$/)) {
+                    const href = e.target.closest('tr')?.querySelector('.temu_plugin_sku_extra .temu_plugin_href')?.href
+                    const launch = () => {
+                        const isHttp = /^#*http/.test(href)
+                        if (confirm(`地址复制完成！${isHttp ? '是否跳转去下单': ''}`) && isHttp) {
+                            let url = window.open(href.replace(/^#+/, ''))
+                            if (url.includes("https://xhl.topwms.com/warehouse/stock_list")) {
+                                url = url.replace("https://xhl.topwms.com/warehouse/stock_list", "https://xhl.topwms.com/manual_order/index")
+                            }
+                            window.open(url)
+                        }
+                    }
+                    const packagesSource = await getOrderPackages(text)
+                    const packagesData = []
+                    if (packagesSource?.length) {
+                        for (var i = 0; i < packagesSource.length; i++) {
+                            try {
+                                if (packagesSource[i]?.package_sn) {
+                                    const { package_sn, tracking_number, ship_company_name, ship_logistics_type, shipping_label_url } = await getOrderPackageShippingLabel(packagesSource[i]?.package_sn) ?? {}
+                                    if (package_sn && tracking_number && shipping_label_url) {
+                                        const dataSource = await fetch(shipping_label_url).then(response => {
+                                            if (!response.ok) {throw new Error('网络响应不正常');}
+                                            return response.blob()
+                                            
+                                        }).then((blob) => {
+                                            return new Promise((resolve) => {
+                                                const reader = new FileReader();
+                                                reader.onloadend = function() {resolve(reader.result)};
+                                                reader.readAsDataURL(blob);
+                                            })
+                                        })
+                                        packagesData.push({ package_sn, tracking_number, ship_company_name, ship_logistics_type, shipping_label_url, dataSource })
+                                    }
+                                }
+                            } catch(err) {console.error(err)}
+                        }
+                    }
+                    if (addressMap[text]) {
+                        addressMap[text].packagesData = packagesData
+                        copyToClipboard(JSON.stringify(addressMap[text]))
+                        launch()
+                        return
+                    }
+                    getAddress(text).then((res) => {
+                        if (res) {
+                            res.packagesData = packagesData
+                            copyToClipboard(JSON.stringify(res))
+                            launch()
+                            addressMap[text] = res
+                        }
+                    })
+                }
+            })
+        }
+    }
     // 订单
     function orderInit () {
-        const addressMap = {}
-        document.body.addEventListener('dblclick', async (e) => {
-            const firstNode = e.target.childNodes?.[0]
-            const text = firstNode?.nodeType === 3 ? firstNode?.nodeValue : null
-            if (text && text.match(/^\w+\-\d+\-\d+$/)) {
-                const href = e.target.closest('tr')?.querySelector('.temu_plugin_sku_extra .temu_plugin_href')?.href
-                const launch = () => {
-                    const isHttp = /^#*http/.test(href)
-                    if (confirm(`地址复制完成！${isHttp ? '是否跳转去下单': ''}`) && isHttp) {
-                        let url = window.open(href.replace(/^#+/, ''))
-                        if (url.includes("https://xhl.topwms.com/warehouse/stock_list")) {
-                            url = url.replace("https://xhl.topwms.com/warehouse/stock_list", "https://xhl.topwms.com/manual_order/index")
-                        }
-                        window.open(url)
-                    }
-                }
-                const packagesSource = await getOrderPackages(text)
-                const packagesData = []
-                if (packagesSource?.length) {
-                    for (var i = 0; i < packagesSource.length; i++) {
-                        try {
-                            if (packagesSource[i]?.package_sn) {
-                                const { package_sn, tracking_number, ship_company_name, ship_logistics_type, shipping_label_url } = await getOrderPackageShippingLabel(packagesSource[i]?.package_sn) ?? {}
-                                if (package_sn && tracking_number && shipping_label_url) {
-                                    const dataSource = await fetch(shipping_label_url).then(response => {
-                                        if (!response.ok) {throw new Error('网络响应不正常');}
-                                        return response.blob()
-                                        
-                                    }).then((blob) => {
-                                        return new Promise((resolve) => {
-                                            const reader = new FileReader();
-                                            reader.onloadend = function() {resolve(reader.result)};
-                                            reader.readAsDataURL(blob);
-                                        })
-                                    })
-                                    packagesData.push({ package_sn, tracking_number, ship_company_name, ship_logistics_type, shipping_label_url, dataSource })
-                                }
-                            }
-                        } catch(err) {console.error(err)}
-                    }
-                }
-                if (addressMap[text]) {
-                    addressMap[text].packagesData = packagesData
-                    copyToClipboard(JSON.stringify(addressMap[text]))
-                    launch()
-                    return
-                }
-                getAddress(text).then((res) => {
-                    if (res) {
-                        res.packagesData = packagesData
-                        copyToClipboard(JSON.stringify(res))
-                        launch()
-                        addressMap[text] = res
-                    }
-                })
-            }
-        })
         const temu_orders_sync_cover = root.querySelector('#temu_orders_sync_cover')
         let clickTimer = null;
         const orderSync = async (cd = 0) => {
@@ -1933,17 +1932,20 @@ window.temu_helper_v2_core = async () => {
     }
     (async () => {
         // 执行
-        await getProductsData()
-        await getOrdersData(true)
-        init()
-        console.log('init::')
-        productPlaneInit()
-        if (agentSeller) {
-            console.log('orderInit::')
-            orderInit()
+        if (config) {
+            await getProductsData()
+            await getOrdersData(true)
+            init()
+            console.log('init::')
+            productPlaneInit()
+            if (agentSeller) {
+                console.log('orderInit::')
+                orderInit()
+            }
+            if (seller) {
+                sellerInit()
+            }
         }
-        if (seller) {
-            sellerInit()
-        }
+        commonInit()
     })()
 }
