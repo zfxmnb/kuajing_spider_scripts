@@ -93,6 +93,10 @@ window.temu_helper_v2_core = async () => {
     }
     // 超出先清空本地缓存
     if (isLocalStorageFull()) localStorage.clear()
+    let getCacheItem = localStorage.getItem
+    try {getCacheItem = GM_getValue ?? localStorage.getItem} catch(err){}
+    let setCacheItem = localStorage.setItem
+    try {setCacheItem = GM_setValue ?? localStorage.setItem} catch(err){}
 
     // 基础方法
     function getCache(key) {
@@ -1152,7 +1156,7 @@ window.temu_helper_v2_core = async () => {
         <a id="temu_download" download class="hide">商品xlsx</a>
         &nbsp;
         <a id="temu_orders_time" class="hide"></a>
-        <a id="temu_orders_sync_cover" class="hide" title="双击全量同步订单">订单同步(双击全量)</a>
+        <a id="temu_orders_sync_cover" class="hide" title="双击全量同步订单">订单同步${window.location.host.includes('agentseller.temu.com') ? ''  : '(双击全量)'}</a>
         <a id="temu_orders_sync_checkout" class="hide" title="1小时内只爬取一次结算数据">结算同步</a>
         <a id="temu_order_download" download class="hide">订单xlsx</a>
         <a id="temu_orders_statistics" class="hide"></a>
@@ -1501,20 +1505,22 @@ window.temu_helper_v2_core = async () => {
                 }
             }, 500)
         })
-        temu_orders_sync_cover.addEventListener('dblclick', async () => {
-            clickTimer && clearTimeout(clickTimer)
-            clickTimer = null
-            setTimeout(async () => {
-                if (confirm('同步全量订单数据，是否继续？')) {
-                    temu_orders_sync_cover.classList.add('hide')
-                    await getOrdersData()
-                    const data = await getTemuOrders()
-                    await ordersDataPush(data, { cover: true })
-                    temu_orders_sync_cover.classList.remove('hide')
-                    alert('同步完成')
-                }
+        if (window.location.host.includes('agentseller.temu.com')) {
+            temu_orders_sync_cover.addEventListener('dblclick', async () => {
+                clickTimer && clearTimeout(clickTimer)
+                clickTimer = null
+                setTimeout(async () => {
+                    if (confirm('同步全量订单数据，是否继续？')) {
+                        temu_orders_sync_cover.classList.add('hide')
+                        await getOrdersData()
+                        const data = await getTemuOrders()
+                        await ordersDataPush(data, { cover: true })
+                        temu_orders_sync_cover.classList.remove('hide')
+                        alert('同步完成')
+                    }
+                })
             })
-        })
+        }
         const getCheckList = async () => {
             return await fetch('/api/merchant/file/export/history/page', {
                 method: 'POST',
@@ -1859,9 +1865,9 @@ window.temu_helper_v2_core = async () => {
         const pollingStatistics = async () => {
             const now = new Date()
             const todayDate = now.toLocaleDateString()
-            const prevLastDate = localStorage.getItem(statisticsNoticeKey)
+            const prevLastDate = getCacheItem(statisticsNoticeKey, null)
             if (now.getHours() === 23 && todayDate !== prevLastDate) {
-                localStorage.setItem(statisticsNoticeKey, todayDate)
+                setCacheItem(statisticsNoticeKey, todayDate)
                 await orderSync(3);
                 let todayTotalQuantity = 0
                 let todayTotalAmount = 0
