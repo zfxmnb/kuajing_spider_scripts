@@ -1,7 +1,7 @@
 let runed = false
 window.dianxiaomi_core = async () => {
     if (runed) true
-    console.log('dianxiaomi_core_v2 running', '202505292358')
+    console.log('dianxiaomi_core_v2 running', '202506081422')
     runed = true
     let imported = false
     function styles(content){
