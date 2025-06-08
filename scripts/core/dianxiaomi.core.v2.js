@@ -3,6 +3,7 @@ window.dianxiaomi_core = async () => {
     if (runed) true
     console.log('dianxiaomi_core_v2 running', '202505292358')
     runed = true
+    let imported = false
     function styles(content){
         const style = document.createElement('style');
         style.innerText = content
@@ -59,6 +60,7 @@ window.dianxiaomi_core = async () => {
     }
     const setInput = (selector, value) => {
         const ele = selector instanceof Element ? selector : document.querySelector(selector)
+        if (imported && ele?.value) return
         if (ele) {
             ele.value = value
             ele.dispatchEvent?.(new Event('input'))
@@ -468,7 +470,7 @@ window.dianxiaomi_core = async () => {
         // 变种信息
         setInput('#skuDataInfo .skuDataTable [name="variationSku"]', payload.skuId)
         setInput('#skuDataInfo .skuDataTable [name="price"]', numberFixed(payload.price_CNY * priceRate))
-        setInput('#skuDataInfo .skuDataTable [name="skuLength"]', payload.size?.[0])
+        setInput('#skuDataInfo .skuDataTable [name="skuLength"]', payload.size?.[0] == 900 ? 899: payload.size?.[0])
         setInput('#skuDataInfo .skuDataTable [name="skuWidth"]', payload.size?.[1])
         setInput('#skuDataInfo .skuDataTable [name="skuHeight"]', payload.size?.[2])
         setInput('#skuDataInfo .skuDataTable [name="weight"]', payload.weight)
@@ -576,6 +578,7 @@ window.dianxiaomi_core = async () => {
             if (display) {ele?.click?.()}
             return display
         }, 500)
+        imported = true
     })
 
     drawerContent?.addEventListener?.('click', async (e) => {
