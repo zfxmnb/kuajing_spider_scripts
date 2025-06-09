@@ -273,14 +273,14 @@ window.dianxiaomi_shein_core = async () => {
         const value = Number(e.target?.value)
         if (!isNaN(value)) {
             priceRate = value
-            window.localStorage?.setItem?.('__price_rate__', value)
+            window.localStorage?.setItem?.('__price_rate_shein__', value)
         }
     })
     stockRateInput?.addEventListener('change', (e) => {
         const value = Number(e.target?.value)
         if (!isNaN(value)) {
             stockRate = value
-            window.localStorage?.setItem?.('__stock_rate__', value)
+            window.localStorage?.setItem?.('__stock_rate_shein__', value)
         }
     })
 
