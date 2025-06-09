@@ -376,7 +376,7 @@ window.dianxiaomi_shein_core = async () => {
                 const searchCategory = document.querySelector('#searchCategory')
                 searchCategory.value = '修剪工具'
                 searchCategory.nextElementSibling?.click?.()
-                await sleep(2500)
+                await sleep(2000)
                 document.querySelector('.classifie-search [node-id]')?.click?.()
             }
         }
@@ -431,11 +431,6 @@ window.dianxiaomi_shein_core = async () => {
             }
         }
         
-        // 产地
-        const productOrigin = document.querySelector?.('[title="请选择省份"]');
-        const productOriginSelector = productOrigin?.closest?.('.ant-select-selector')
-        productOriginSelector?.dispatchEvent?.(new Event('mousedown'))
-        setTimeout(() => getGlobalEle('.ant-select-item[title="广东省"]')?.click?.(), 100)
         // 站外产品链接
         setInput(document.querySelector('#productProductInfo .ant-form-item label[title="站外产品链接"]')?.closest('.ant-form-item').querySelector('.ant-input'), payload.sourceUrl)
         // 设置图片
@@ -486,94 +481,6 @@ window.dianxiaomi_shein_core = async () => {
                 }
             }
         }
-        // 颜色属性
-        const colorCon = document.querySelector('.ant-select-selection-item[title="颜色"]')?.closest('.ant-select')?.nextElementSibling
-        if (colorCon) {
-            const colorCheckbox = colorCon.querySelector('.checkbox-input')
-            if (!colorCheckbox) {
-                const colorInput = colorCon.querySelector('.ant-input')
-                setInput(colorInput, payload.colors?.[0] ?? 'unknown')
-                await sleep(200);
-                colorInput?.nextElementSibling?.click?.()
-                await sleep(1000)
-            }
-        }
-        
-        // 包装信息
-        const innerPackageSelector = document.querySelector('#packageInfo [title="外包装形状"]')?.closest('.ant-form-item')?.querySelector('.ant-select-selector')
-        if (innerPackageSelector) {
-            innerPackageSelector?.dispatchEvent?.(new Event('mousedown'))
-            setTimeout(() => getGlobalEle('.rc-virtual-list [title="长方体"]')?.click?.(), 100)
-        }
-        const outerPackageSelector = document.querySelector('#packageInfo [title="外包装类型"]')?.closest('.ant-form-item')?.querySelector('.ant-select-selector')
-        if (outerPackageSelector) {
-            outerPackageSelector?.dispatchEvent?.(new Event('mousedown'))
-            setTimeout(() => getGlobalEle('.rc-virtual-list [title="硬包装"]')?.click?.(), 100)
-        }
-        const packageImgItem = document.querySelector('#packageInfo .img-list .img-item')
-        if (innerPackageSelector && !packageImgItem) {
-            const packageImageCon = document.querySelector('#packageInfo .ant-form-item label[title="外包装图片"]')?.closest('.ant-form-item')
-            const packageImageButton = packageImageCon.querySelector('button')
-            if (packageImageButton) {
-                packageImageButton?.dispatchEvent?.(new Event('mouseenter'))
-                await sleep(200);
-                getGlobalEle('[data-menu-id="net"]')?.click?.()
-                packageImageButton?.dispatchEvent?.(new Event('mouseleave'))
-                await sleep(200);
-                const netImgUrl = getGlobalEle('[placeholder="请填写图片URL地址，多个地址用回车换行"]')
-                setInput(netImgUrl, 'https://img.myshopline.com/image/official/477168e554ab409cad55a46005699cf1.jpeg')
-                netImgUrl?.closest?.('.ant-modal-content')?.querySelector('.ant-btn-primary')?.click?.()
-            }
-        }
-        // 运输配置
-        const ship2dayRadio = document.querySelector('#shipmentInfo input[value="172800"]')
-        if (ship2dayRadio) ship2dayRadio.click()
-        const shipmentInfoSelector = document.querySelector('#shipmentInfo [title="运费模板"]')?.closest('.ant-form-item')?.querySelector('.ant-select-selector')
-        shipmentInfoSelector?.dispatchEvent?.(new Event('mousedown'))
-        await sleep(1500)
-        getGlobalEle('.rc-virtual-list .ant-select-item[id]')?.click?.()
-        // 产品详情
-        interceptor?.((data) => {
-            interceptor(void 0)
-            if (data?.description) return {}
-            const list = []
-            let priority = 0
-            payload.description?.forEach?.((text) => {
-                list.push({
-                    "lang":"zh", "type":"text", "priority":`${priority++}`,
-                    "contentList": {
-                        "text": text,
-                        "textModuleDetails": {
-                            "fontFamily": null,
-                            "fontSize": "12",
-                            "fontColor": "#000000",
-                            "align": "left",
-                            "backgroundColor": "#ffffff"
-                        }
-                    }
-                })
-            })
-            payload.detail_images?.forEach?.((imgUrl) => {
-                list.push( {
-                    "lang":"zh", "type":"image", "priority":`${priority++}`,
-                    "contentList": {
-                        "imgUrl": imgUrl,
-                        "width": 800,
-                        "height": 800
-                    }
-                })
-            })
-            return {
-                description: JSON.stringify(list)
-            }
-        })
-        setTimeout(() => {findElementsByText('保存', document.body, (ele) => ele.closest('.btn-orange'))[0]?.click?.()}, 1000)
-        polling(() => {
-            const ele = document.querySelector('.ant-modal-wrap .ant-btn-primary')
-            const display = judgmentDisplay(ele)
-            if (display) {ele?.click?.()}
-            return display
-        }, 500)
         imported = true
     })
 
