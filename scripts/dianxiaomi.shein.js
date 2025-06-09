@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         dianxiaomi_v2
+// @name         dianxiaomi_shein
 // @namespace    http://tampermonkey.net/
-// @version      2025-05-15
+// @version      2025-06-09
 // @description  try to take over the world!
 // @author       You
 // @match        https://www.dianxiaomi.com/sheinProduct/*
