@@ -337,11 +337,11 @@ window.dianxiaomi_shein_core = async () => {
         setInput('#productDesc', payload.description?.join('\n'))
         // 图片
         document.querySelector(`#spuImageTable .tuiImageEditorBox [onclick="SHEIN_PRODUCT_IMAGE_UP.imageFn.thumbnailImg(this, '3');"]`)?.click()
-        await sleep(200);
+        await sleep(100);
         document.querySelector('#commProductNetImgUrl').value = payload.images?.[0]
-        await sleep(200);
+        await sleep(100);
         window.PRODUCT_COMM.networkImgConfirm();
-        await sleep(200);
+        await sleep(100);
         window.IMGRESIZE.modalBuild('spuImgList .dropDownSelectGoods', SHEIN_PRODUCT_IMAGE_UP.imageFn.resizeCall, '.tuiImageBox')
         await sleep(1000);
         let setlen = document.querySelector('#imgResize [name="setlen"]')
@@ -377,19 +377,19 @@ window.dianxiaomi_shein_core = async () => {
         const thumbnailImgSrc = document.querySelector(`#spuImageTable .tuiImageEditorBox .imgUrl`).src
         if (thumbnailImgSrc) {
             document.querySelector(`#skuInfoTable [onclick="SHEIN_PRODUCT_IMAGE_UP.imageFn.thumbnailImg(this, 3);"]`)?.click()
-            await sleep(200);
+            await sleep(100);
             document.querySelector('#commProductNetImgUrl').value = thumbnailImgSrc
-            await sleep(200);
+            await sleep(100);
             window.PRODUCT_COMM.networkImgConfirm();
-            await sleep(200);
+            await sleep(100);
         }
         // 变种图片
         document.querySelector(`#skuImgBox .detailImgTd [onclick="SHEIN_PRODUCT_IMAGE_UP.imageFn.uploadImg('3', this)"]`)?.click()
-        await sleep(200);
+        await sleep(100);
         document.querySelector('#commProductNetImgUrl').value = payload.images?.join('\n')
-        await sleep(200);
+        await sleep(100);
         window.PRODUCT_COMM.networkImgConfirm();
-        await sleep(200);
+        await sleep(100);
         window.IMGRESIZE.modalBuild('detailImgTd:not(.notEditAble)', SHEIN_PRODUCT_IMAGE_UP.imageFn.resizeCall, 'shein');
         await sleep(1000);
         setlen = document.querySelector('#imgResize [name="setlen"]')
@@ -408,11 +408,11 @@ window.dianxiaomi_shein_core = async () => {
         }
         // 方形图
         document.querySelector(`#skuImgBox .squareImgTd [onclick="SHEIN_PRODUCT_IMAGE_UP.imageFn.thumbnailImg(this, '3');"]`)?.click()
-        await sleep(200);
+        await sleep(100);
         document.querySelector('#commProductNetImgUrl').value = payload.images?.[0]
-        await sleep(200);
+        await sleep(100);
         window.PRODUCT_COMM.networkImgConfirm();
-        await sleep(200);
+        await sleep(100);
         window.IMGRESIZE.modalBuild('squareImgTd:not(.notEditAble)', SHEIN_PRODUCT_IMAGE_UP.imageFn.resizeCall, 'shein');
         await sleep(1000);
         setlen = document.querySelector('#imgResize [name="setlen"]')
@@ -435,7 +435,7 @@ window.dianxiaomi_shein_core = async () => {
         }
         // 详情图
         document.querySelector(`#particularImgInfo [onclick="SHEIN_PRODUCT_IMAGE_UP.particularImgFn.uploadParticularImg('3', this)"]`)?.click()
-        await sleep(200);
+        await sleep(100);
         const detail_images = payload?.detail_images ?? []
         let list = [...(payload?.detail_images ?? [])]
         if (list.length > 10) {list = [...list.slice(0, 7)].concat(list.length > 3 ? list.slice(-3) : [])}
@@ -451,9 +451,9 @@ window.dianxiaomi_shein_core = async () => {
             }
         }
         document.querySelector('#commProductNetImgUrl').value = list?.join('\n')
-        await sleep(200);
+        await sleep(100);
         window.PRODUCT_COMM.networkImgConfirm();
-        await sleep(200);
+        await sleep(100);
         window.IMGRESIZE.modalBuild('particularImgItem', SHEIN_PRODUCT_IMAGE_UP.imageFn.resizeCall, 'shein');
         await sleep(1000);
         setlen = document.querySelector('#imgResize [name="setlen"]')
