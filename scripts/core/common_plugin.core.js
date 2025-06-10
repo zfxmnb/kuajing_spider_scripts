@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-    console.log('common_plugin_core running', '202506101512')
+    console.log('common_plugin_core running', '202506101739')
     const matchDomains = ['www.gigab2b.com', 'www.saleyee.cn', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'returnhelper.com', 'oms.xlwms.com']
     // 一下内容在指定域名下生效
     if (!matchDomains.includes(window.location.host)) {return}
@@ -462,6 +462,45 @@ window.common_plugin_core = async () => {
             app.classList.add('hide')
         }
     }
+    const gcInitImport = async (timer) => {
+        const c1 = document.querySelector('[label="发货仓（区域）"] .ant-select-selection__rendered')
+        if (!c1) return
+        timer && clearInterval(timer);
+        let c1Value = window.localStorage.getItem('__c1_value__')
+        if (c1Value) {
+            c1?.click()
+            await sleep(1000)
+            findElementsByText(c1Value)?.[0]?.click?.()
+        }
+        const c1Input = c1.querySelector('input')
+        if (c1Input) {
+            !c1Input?.__listened__ && c1Input.addEventListener('blur', async () => {
+                await sleep(100)
+                const c1v = c1.querySelector('.ant-select-selection-selected-value')?.getAttribute?.('title')
+                c1v && (c1Value = c1v)
+                c1v && window.localStorage.setItem('__c1_value__', c1v)
+            })
+            c1Input.__listened__ = true
+        }
+        await sleep(1500)
+        const c2 = document.querySelector('[label="物理仓"] .ant-select-selection__rendered')
+        if (!c2 || !c1.querySelector('.ant-select-selection-selected-value')) return
+        let c2Value = window.localStorage.getItem('__c2_value__')
+        if (c2Value) {
+            c2?.click()
+            await sleep(1000)
+            findElementsByText(c2Value)?.[0]?.click?.()
+        }
+        const c2Input = c2.querySelector('input')
+        if (c2Input) {
+            !c2Input.__listened__ && c2Input.addEventListener('blur', async () => {
+                await sleep(100)
+                const c2v = c2.querySelector('.ant-select-selection-selected-value')?.getAttribute?.('title')
+                c2v && window.localStorage.setItem('__c2_value__', c2v)
+            })
+            c2Input.__listened__ = true
+        }
+    }
     document.body.addEventListener('mousemove', throttle(() => fn(), 1500))
     const loadedFn = () => {
         setTimeout(() => fn(true), 1000)
@@ -705,42 +744,14 @@ window.common_plugin_core = async () => {
         }
     })
     if (window.location.href.includes(goodcangCheckout)) {
-        const timer1 = setInterval(async() => {
-            const c1 = document.querySelector('[label="发货仓（区域）"] .ant-select-selection__rendered')
-            if (!c1) return
-            clearInterval(timer1);
-            let c1Value = window.localStorage.getItem('__c1_value__')
-            if (c1Value) {
-                c1?.click()
-                await sleep(1000)
-                findElementsByText(c1Value)?.[0]?.click?.()
+        const timer = setInterval(async() => {
+            gcInitImport(timer)
+        }, 1000)
+        document.body.addEventListener('click', async (e) => {
+            if(e.target.classList.contains('ant-modal-footer') && e.target.innerText === '继续新增') {
+                gcInitImport()
             }
-            let c1v
-            !c1?.__listened__ && c1.querySelector('input').addEventListener('blur', async () => {
-                await sleep(100)
-                c1v = c1.querySelector('.ant-select-selection-selected-value')?.getAttribute?.('title')
-                c1v && window.localStorage.setItem('__c1_value__', c1v)
-            })
-            c1.__listened__ = true
-            await sleep(1000)
-            const timer2 = setInterval(async () => {
-                const c2 = document.querySelector('[label="物理仓"] .ant-select-selection__rendered')
-                if (!c2 || !c1v) return
-                clearInterval(timer2);
-                let c2Value = window.localStorage.getItem('__c2_value__')
-                if (c2Value) {
-                    c2?.click()
-                    await sleep(1000)
-                    findElementsByText(c2Value)?.[0]?.click?.()
-                }
-                !c2.__listened__ && c2.querySelector('input').addEventListener('blur', async () => {
-                    await sleep(100)
-                    const c2v = c2.querySelector('.ant-select-selection-selected-value')?.getAttribute?.('title')
-                    c2v && window.localStorage.setItem('__c2_value__', c2v)
-                })
-                c2.__listened__ = true
-            }, 1000);
-        }, 1000);
+        })
     }
 }
 
