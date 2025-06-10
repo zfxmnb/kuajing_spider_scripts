@@ -17,7 +17,8 @@
     window.top._temu_helper_config_map_ = {
         "default": {
             Name: "",
-            Port: 5431
+            Port: 5431,
+            // AutoDisabled: true
         }
     }
 })()

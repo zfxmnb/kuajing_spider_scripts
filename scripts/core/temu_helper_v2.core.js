@@ -1,5 +1,5 @@
 window.temu_helper_v2_core = async () => {
-    console.log('temu_helper_v2_core running', '202506102317')
+    console.log('temu_helper_v2_core running', '202506102351')
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
@@ -12,8 +12,7 @@ window.temu_helper_v2_core = async () => {
     const config = ConfigMap?.[mallId] || ConfigMap?.['default']
     const Name = config?.Name || ""  // 本地服务端口
     const Port = config?.Port || 5431  // 本地服务端口
-    // const User = config?.User // 账号
-    // const Password = config?.Password // 密码
+    const AutoDisabled = config?.AutoDisabled ?? false  // 是否禁用自动同步以及通知
     const Host = config?.Host || '127.0.0.1' // host
     const Origin = `http://${Host}:${Port}`
     const pollingInterval = 15 * 60 * 1000 + Math.round(Math.random() * 15 * 1000) // 轮询代发货订单及平台处理中订单
@@ -1072,6 +1071,7 @@ window.temu_helper_v2_core = async () => {
         .temu_plugin_order_extra_gooditem {
             position: relative;
             font-size: 10px;
+            text-align: left;
         }
         .temu_plugin_order_extra_gooditem_close {
             position: absolute;
@@ -1239,7 +1239,8 @@ window.temu_helper_v2_core = async () => {
                     </div>`
                 }
                 span.innerHTML = html
-                ele.appendChild(span)
+                // ele.appendChild(span)
+                ele.parentElement.insertBefore(span, ele)
             })
         })
         const temu_time = root.querySelector('#temu_orders_time')
@@ -1506,7 +1507,7 @@ window.temu_helper_v2_core = async () => {
                 }
             }, 500)
         })
-        if (window.location.host.includes('agentseller.temu.com')) {
+        if (window.location.host.includes('agentseller-us.temu.com')) {
             temu_orders_sync_cover.addEventListener('dblclick', async () => {
                 clickTimer && clearTimeout(clickTimer)
                 clickTimer = null
@@ -1632,10 +1633,12 @@ window.temu_helper_v2_core = async () => {
                     } catch(err) {}
                 }
             }
-            autoSyncCheckout();
-            setExactInterval(async () => {
+            if (!AutoDisabled) {
                 autoSyncCheckout();
-            }, 24 * 60 * 60 * 1000)
+                setExactInterval(async () => {
+                    autoSyncCheckout();
+                }, 24 * 60 * 60 * 1000)
+            }
         }
 
         document.body.addEventListener('click', async (e) => {
@@ -1881,61 +1884,65 @@ window.temu_helper_v2_core = async () => {
                 }
             }
         }
-        setExactInterval(async () => {
-            console.log('检查订单：', new Date().toLocaleString())
-            pollingHandle()
-            pollingTemuRefund()
-        }, pollingInterval)
-        pollingChat();
-        setExactInterval(async () => {
-            console.log('聊天检测：', new Date().toLocaleString())
-            pollingChat()
-        }, chatPollingInterval)
-        setExactInterval(async () => {
-            console.log('每日统计：', new Date().toLocaleString())
-            pollingStatistics()
-        }, 60 * 60 * 1000)
-        const orderAutoSyncKey = `${Name}__temu_order_auto_sync_last_time__`
-        setExactInterval(async () => {
-            const now = new Date()
-            console.log('定时同步订单数据', now.toLocaleString())
-            const nowHourStr = now.toLocaleDateString() + '_' + now.getHours();
-            const prevLasthour = localStorage.getItem(orderAutoSyncKey)
-            if (nowHourStr !== prevLasthour) {
-                await orderSync(3);
-                localStorage.setItem(orderAutoSyncKey, nowHourStr)
-            }
-        }, 2 * 60 * 60 * 1000)
-        setExactInterval(() => {
-            console.log('心跳检查：', new Date().toLocaleString())
-        }, 60 * 1000)
-        // 自动调价
-        if (ReductionInterval) {
+        if (!AutoDisabled) {
             setExactInterval(async () => {
-                const reduction_date_key = `${Name}__reduction_date__`
-                const reductionDate = getCache(reduction_date_key)
-                const todayDate = new Date().toLocaleDateString()
-                const nextDate = new Date(Date.now() + ReductionInterval).toLocaleDateString()
-                if (reductionDate != todayDate && nextDate != todayDate) {
-                    await productsReduction(0.01)
-                    setCache(reduction_date_key, todayDate)
+                console.log('检查订单：', new Date().toLocaleString())
+                pollingHandle()
+                pollingTemuRefund()
+            }, pollingInterval)
+            pollingChat();
+            setExactInterval(async () => {
+                console.log('聊天检测：', new Date().toLocaleString())
+                pollingChat()
+            }, chatPollingInterval)
+            setExactInterval(async () => {
+                console.log('每日统计：', new Date().toLocaleString())
+                pollingStatistics()
+            }, 60 * 60 * 1000)
+            const orderAutoSyncKey = `${Name}__temu_order_auto_sync_last_time__`
+            setExactInterval(async () => {
+                const now = new Date()
+                console.log('定时同步订单数据', now.toLocaleString())
+                const nowHourStr = now.toLocaleDateString() + '_' + now.getHours();
+                const prevLasthour = localStorage.getItem(orderAutoSyncKey)
+                if (nowHourStr !== prevLasthour) {
+                    await orderSync(3);
+                    localStorage.setItem(orderAutoSyncKey, nowHourStr)
                 }
-            }, ReductionInterval)
+            }, 2 * 60 * 60 * 1000)
+            setExactInterval(() => {
+                console.log('心跳检查：', new Date().toLocaleString())
+            }, 60 * 1000)
+            // 自动调价
+            if (ReductionInterval) {
+                setExactInterval(async () => {
+                    const reduction_date_key = `${Name}__reduction_date__`
+                    const reductionDate = getCache(reduction_date_key)
+                    const todayDate = new Date().toLocaleDateString()
+                    const nextDate = new Date(Date.now() + ReductionInterval).toLocaleDateString()
+                    if (reductionDate != todayDate && nextDate != todayDate) {
+                        await productsReduction(0.01)
+                        setCache(reduction_date_key, todayDate)
+                    }
+                }, ReductionInterval)
+            }
         }
     }
     const sellerInit = async () => {
         const productAutoSyncKey = `${Name}__temu_product_auto_sync_last_time__`
-        setExactInterval(async () => {
-            const now = new Date()
-            console.log('定时同步商品数据', now.toLocaleString())
-            const nowHourStr = now.toLocaleDateString()
-            const prevLasthour = localStorage.getItem(productAutoSyncKey)
-            if (nowHourStr !== prevLasthour) {
-                await getProductsData()
-                await productsDataSync()
-                localStorage.setItem(productAutoSyncKey, todayDate)
-            }
-        }, 24 * 60 * 60 * 1000)
+        if (!AutoDisabled) {
+            setExactInterval(async () => {
+                const now = new Date()
+                console.log('定时同步商品数据', now.toLocaleString())
+                const nowHourStr = now.toLocaleDateString()
+                const prevLasthour = localStorage.getItem(productAutoSyncKey)
+                if (nowHourStr !== prevLasthour) {
+                    await getProductsData()
+                    await productsDataSync()
+                    localStorage.setItem(productAutoSyncKey, todayDate)
+                }
+            }, 24 * 60 * 60 * 1000)
+        }
     }
     (async () => {
         // 执行
