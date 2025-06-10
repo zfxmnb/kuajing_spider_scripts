@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-    console.log('common_plugin_core running', '202506101649')
+    console.log('common_plugin_core running', '202506101512')
     const matchDomains = ['www.gigab2b.com', 'www.saleyee.cn', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'returnhelper.com', 'oms.xlwms.com']
     // 一下内容在指定域名下生效
     if (!matchDomains.includes(window.location.host)) {return}
@@ -599,6 +599,9 @@ window.common_plugin_core = async () => {
                         'Ground': 'WH_UPS_GROUND',
                         '2nd Day Air': 'WH_UPS_2ND_DAY',
                         'Next Day Air': 'WH_UPS_NEXT_DAY'
+                    },
+                    'USPS': {
+                        'Ground Advantage': 'WH_USPS_LWPARCEL'
                     },
                     'OnTrac': {
                         'Ground drop off': 'WH_OTGROUND',
