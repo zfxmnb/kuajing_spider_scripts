@@ -601,7 +601,7 @@ window.common_plugin_core = async () => {
                         'Next Day Air': 'WH_UPS_NEXT_DAY'
                     },
                     'OnTrac': {
-                        'ground drop off': 'WH_OTGROUND',
+                        'Ground drop off': 'WH_OTGROUND',
                     }
                 }
                 const selfMap = {
@@ -712,16 +712,17 @@ window.common_plugin_core = async () => {
                 await sleep(1000)
                 findElementsByText(c1Value)?.[0]?.click?.()
             }
+            let c1v
             !c1?.__listened__ && c1.querySelector('input').addEventListener('blur', async () => {
                 await sleep(100)
-                const c1v = c1.querySelector('.ant-select-selection-selected-value')?.getAttribute?.('title')
+                c1v = c1.querySelector('.ant-select-selection-selected-value')?.getAttribute?.('title')
                 c1v && window.localStorage.setItem('__c1_value__', c1v)
             })
             c1.__listened__ = true
             await sleep(1000)
             const timer2 = setInterval(async () => {
                 const c2 = document.querySelector('[label="物理仓"] .ant-select-selection__rendered')
-                if (!c2) return
+                if (!c2 || !c1v) return
                 clearInterval(timer2);
                 let c2Value = window.localStorage.getItem('__c2_value__')
                 if (c2Value) {
