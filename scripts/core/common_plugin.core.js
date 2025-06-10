@@ -258,7 +258,7 @@ window.common_plugin_core = async () => {
             await navigator.clipboard.writeText(text);
             console.log('Text copied to clipboard');
         } catch (err) {
-            console.error('Failed to copy text: ', err);
+            // console.error('Failed to copy text: ', err);
         }
     }
     styles(`
