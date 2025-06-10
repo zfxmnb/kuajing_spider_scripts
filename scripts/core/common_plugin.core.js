@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-    console.log('common_plugin_core running', '202506101739')
+    console.log('common_plugin_core running', '202506101745')
     const matchDomains = ['www.gigab2b.com', 'www.saleyee.cn', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'returnhelper.com', 'oms.xlwms.com']
     // 一下内容在指定域名下生效
     if (!matchDomains.includes(window.location.host)) {return}
@@ -748,8 +748,10 @@ window.common_plugin_core = async () => {
             gcInitImport(timer)
         }, 1000)
         document.body.addEventListener('click', async (e) => {
-            if(e.target.classList.contains('ant-modal-footer') && e.target.innerText === '继续新增') {
-                gcInitImport()
+            if(e.target.classList.closest('ant-modal-footer') && e.target.innerText === '继续新增') {
+                const timer = setInterval(async() => {
+                    gcInitImport(timer)
+                }, 1500)
             }
         })
     }
