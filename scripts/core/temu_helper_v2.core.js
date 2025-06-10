@@ -1,10 +1,11 @@
 window.temu_helper_v2_core = async () => {
-    console.log('temu_helper_v2_core running', '202506082337')
+    console.log('temu_helper_v2_core running', '202506102317')
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
     } catch(err) {console.error(err)}
+    console.log('[temu_helper_v2_core] mallId:', mallId)
     // -----------------------------------------------------------------------------
     // 配置
     const ConfigMap = unsafeWindow.top._temu_helper_config_map_ || window.top._temu_helper_config_map_
