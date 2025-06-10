@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-    console.log('common_plugin_core running', '202505251548')
+    console.log('common_plugin_core running', '202506101649')
     const matchDomains = ['www.gigab2b.com', 'www.saleyee.cn', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'returnhelper.com', 'oms.xlwms.com']
     // 一下内容在指定域名下生效
     if (!matchDomains.includes(window.location.host)) {return}
@@ -541,12 +541,24 @@ window.common_plugin_core = async () => {
             const data = app.dataSource
             if (data) {
                 await new Promise((r) => setTimeout(r, 1))
+                const base = document.querySelector('[data-sign="outbound_standard_order_add_edit_form"]')
+
+                const referenceEle = base.querySelector('[data-sign="reference_no"]')?.querySelector('input')
+                referenceEle.value = data?.parent_order_sn || ''
+                referenceEle.dispatchEvent(inputEvent)
+
+                document.querySelector('[label="销售平台"] .ant-select-selection__rendered')?.click()
+                await sleep(400)
+                findElementsByText('TEMU')?.[0]?.click?.()
+
                 const ca = document.querySelector('[data-sign="outbound_order_fba_address"]')
                 const receiptNameEle = ca.querySelector('[data-sign="address.consignee_name"]')?.querySelector('input')
                 receiptNameEle.value = data?.receipt_name || ''
                 receiptNameEle.dispatchEvent(inputEvent)
 
-                findElementsByText('US[美国]', document.querySelector('[title="常用国家/地区"]')?.nextElementSibling)?.[0]?.click?.()
+                document.querySelector('[label="国家/地区"] .ant-select-selection__rendered')?.click()
+                await sleep(400)
+                findElementsByText('US[美国]')?.[0]?.click?.()
                 
                 const regionName2Ele = ca.querySelector('[data-sign="address.state"]')?.querySelector('input')
                 regionName2Ele.value = data?.region_name2 || ''
@@ -568,15 +580,57 @@ window.common_plugin_core = async () => {
                 address2Ele.value = data?.address_line2 || ''
                 address2Ele.dispatchEvent(inputEvent)
 
-                const mobilePrefix = ca.querySelector('[data-sign="address.phone"]')?.querySelector('.ant-select-selection__rendered input')
-                mobilePrefix.dispatchEvent(clickEvent)
-                await new Promise((r) => setTimeout(r, 1000))
+                ca.querySelector('[data-sign="address.phone"]')?.querySelector('.ant-select-selection__rendered')?.click()
+                await sleep(1000)
+                console.log(findElementsByText('1-US'))
                 findElementsByText('1-US')?.[0]?.click?.()
 
                 const mobileEle = ca.querySelector('[data-sign="address.phone"]')?.querySelector('.show-char-num-text input')
                 mobileEle.value = data?.mobile || ''
                 mobileEle.dispatchEvent(inputEvent)
 
+                const {tracking_number, ship_company_name, ship_logistics_type, dataSource, shipping_label_url} = data?.packagesData?.[0] ?? {}
+                const noSelfMap = {
+                    'FedEx': {
+                        'ground economy': 'WH_FEDEX_ECONOMY',
+                        'ground': 'WH_FEDEX_GROUND'
+                    },
+                    'UPS': {
+                        'Ground': 'WH_UPS_GROUND',
+                        '2nd Day Air': 'WH_UPS_2ND_DAY',
+                        'Next Day Air': 'WH_UPS_NEXT_DAY'
+                    },
+                    'OnTrac': {
+                        'ground drop off': 'WH_OTGROUND',
+                    }
+                }
+                const selfMap = {
+                    'GOFO EXPRESS': {
+                        'Standard': 'SELF_GOFO_Standard'
+                    }
+                }
+                let logKey = selfMap[ship_company_name]?.[ship_logistics_type]
+                isSelf = !!logKey
+                if (!isSelf) {
+                    logKey = noSelfMap[ship_company_name]?.[ship_logistics_type]
+                }
+                document.querySelector(`[label="配送商"] .ant-radio-button-wrapper:nth-child(${isSelf ? 3 : 2})`)?.click()
+                await sleep(400)
+                const trackingNumberElE = document.querySelector('[data-sign="label_info_list.0.tracking_number"] input')
+                trackingNumberElE.value = tracking_number || ''
+                trackingNumberElE.dispatchEvent(inputEvent)
+                document.querySelector('[label="物流产品"] .ant-select-selection__rendered')?.click()
+                if (logKey) {
+                    await sleep(400)
+                    findElementsByText(logKey)?.[0]?.click?.()
+                }
+                const upload = document.querySelector('[data-sign="label_info_list.0.attachment.url"] input[type="file"]')
+                if (upload) {
+                    setFile(upload, `${tracking_number}.pdf`, dataSource)
+                }
+                if (logKey) {
+                    document.querySelector('[data-sign="outbound_order_product_item_choose"]')?.click()
+                }
             }
         }
         if (e.target.closest('.xlwms_checkout_import')) {
@@ -647,6 +701,43 @@ window.common_plugin_core = async () => {
             data.address_line2 && setInput(document.querySelector('[for="addressTwo"]')?.nextElementSibling?.querySelector('textarea'), data.address_line2)
         }
     })
+    if (window.location.href.includes(goodcangCheckout)) {
+        const timer1 = setInterval(async() => {
+            const c1 = document.querySelector('[label="发货仓（区域）"] .ant-select-selection__rendered')
+            if (!c1) return
+            clearInterval(timer1);
+            let c1Value = window.localStorage.getItem('__c1_value__')
+            if (c1Value) {
+                c1?.click()
+                await sleep(1000)
+                findElementsByText(c1Value)?.[0]?.click?.()
+            }
+            !c1?.__listened__ && c1.querySelector('input').addEventListener('blur', async () => {
+                await sleep(100)
+                const c1v = c1.querySelector('.ant-select-selection-selected-value')?.getAttribute?.('title')
+                c1v && window.localStorage.setItem('__c1_value__', c1v)
+            })
+            c1.__listened__ = true
+            await sleep(1000)
+            const timer2 = setInterval(async () => {
+                const c2 = document.querySelector('[label="物理仓"] .ant-select-selection__rendered')
+                if (!c2) return
+                clearInterval(timer2);
+                let c2Value = window.localStorage.getItem('__c2_value__')
+                if (c2Value) {
+                    c2?.click()
+                    await sleep(1000)
+                    findElementsByText(c2Value)?.[0]?.click?.()
+                }
+                !c2.__listened__ && c2.querySelector('input').addEventListener('blur', async () => {
+                    await sleep(100)
+                    const c2v = c2.querySelector('.ant-select-selection-selected-value')?.getAttribute?.('title')
+                    c2v && window.localStorage.setItem('__c2_value__', c2v)
+                })
+                c2.__listened__ = true
+            }, 1000);
+        }, 1000);
+    }
 }
 
 // (async function() {
