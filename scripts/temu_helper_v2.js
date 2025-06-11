@@ -26,7 +26,7 @@
 (async function() {
     let fetchInterceptor
     try {
-        fetchInterceptor = fetchInterceptorInit();
+        fetchInterceptor = fetchInterceptorInit(unsafeWindow);
     } catch (err) {}
     setTimeout(() => {
         temu_helper_v2_core(fetchInterceptor);

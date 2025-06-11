@@ -1,9 +1,9 @@
-function fetchInterceptorInit () {
+function fetchInterceptorInit (w = window) {
     const fetchInterceptorMap = {}
     try {
         // 自定义 fetch 拦截器
-        const originalFetch = unsafeWindow.fetch;
-        unsafeWindow.fetch = async function (...args) {
+        const originalFetch = w.fetch;
+        w.fetch = async function (...args) {
             // 调用原始 fetch
             const response = await originalFetch(...args);
             // 你可以在这里处理响应数据
