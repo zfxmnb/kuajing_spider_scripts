@@ -409,7 +409,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
             page += 1
             const result = await getTemuRefundList(groupSearchType, page, scopeType)
             if (result) {
-                // total = result.totalCount
+                total = result.totalCount
                 pageItems = pageItems.concat(result.data || [])
             } else {
                 total = pageItems.length
@@ -1500,6 +1500,13 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 setTimeout(() => {
                     clearInterval(timer)
                 }, 10000)
+                
+                fetchInterceptor('https://agentseller-us.temu.com/mms/eagle/package/online/batch_send', async (response) => {
+                    const data = await response.json()
+                    if (data.success) {
+                        response.header.data
+                    }
+                })
             }
 
         }
