@@ -1,6 +1,6 @@
-window.temu_helper_v2_core = async () => {
-    console.log('temu_helper_v2_core running', '202506111422')
+window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
+    console.log('temu_helper_v2_core running', '202506111716')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -1034,6 +1034,58 @@ window.temu_helper_v2_core = async () => {
             }
         })
     }
+    const addressMap = {}
+    const getAddrAndPackage = async (id, href) => {
+        const launch = () => {
+            const isHttp = !!href && /^#*http/.test(href)
+            if (confirm(`地址复制完成！${isHttp ? '是否跳转去下单': ''}`) && isHttp) {
+                let url = window.open(href.replace(/^#+/, ''))
+                if (url.includes("https://xhl.topwms.com/warehouse/stock_list")) {
+                    url = url.replace("https://xhl.topwms.com/warehouse/stock_list", "https://xhl.topwms.com/manual_order/index")
+                }
+                window.open(url)
+            }
+        }
+        const packagesSource = await getOrderPackages(text)
+        const packagesData = []
+        if (packagesSource?.length) {
+            for (var i = 0; i < packagesSource.length; i++) {
+                try {
+                    if (packagesSource[i]?.package_sn) {
+                        const { package_sn, tracking_number, ship_company_name, ship_logistics_type, shipping_label_url } = await getOrderPackageShippingLabel(packagesSource[i]?.package_sn) ?? {}
+                        if (package_sn && tracking_number && shipping_label_url) {
+                            const dataSource = await fetch(shipping_label_url).then(response => {
+                                if (!response.ok) {throw new Error('网络响应不正常');}
+                                return response.blob()
+                                
+                            }).then((blob) => {
+                                return new Promise((resolve) => {
+                                    const reader = new FileReader();
+                                    reader.onloadend = function() {resolve(reader.result)};
+                                    reader.readAsDataURL(blob);
+                                })
+                            })
+                            packagesData.push({ package_sn, tracking_number, ship_company_name, ship_logistics_type, shipping_label_url, dataSource })
+                        }
+                    }
+                } catch(err) {console.error(err)}
+            }
+        }
+        if (addressMap[text]) {
+            addressMap[text].packagesData = packagesData
+            copyToClipboard(JSON.stringify(addressMap[text]))
+            launch()
+            return
+        }
+        getAddress(text).then((res) => {
+            if (res) {
+                res.packagesData = packagesData
+                copyToClipboard(JSON.stringify(res))
+                launch()
+                addressMap[text] = res
+            }
+        })
+    }
     // ------------------------------------------------------------------------------------
     // 执行
     styles(`
@@ -1417,61 +1469,12 @@ window.temu_helper_v2_core = async () => {
     }
     function commonInit () {
         if (agentSeller) {
-            const addressMap = {}
             document.body.addEventListener('dblclick', async (e) => {
                 const firstNode = e.target.childNodes?.[0]
                 const text = firstNode?.nodeType === 3 ? firstNode?.nodeValue : null
                 if (text && text.match(/^\w+\-\d+\-\d+$/)) {
                     const href = e.target.closest('tr')?.querySelector('.temu_plugin_sku_extra .temu_plugin_href')?.href
-                    const launch = () => {
-                        const isHttp = /^#*http/.test(href)
-                        if (confirm(`地址复制完成！${isHttp ? '是否跳转去下单': ''}`) && isHttp) {
-                            let url = window.open(href.replace(/^#+/, ''))
-                            if (url.includes("https://xhl.topwms.com/warehouse/stock_list")) {
-                                url = url.replace("https://xhl.topwms.com/warehouse/stock_list", "https://xhl.topwms.com/manual_order/index")
-                            }
-                            window.open(url)
-                        }
-                    }
-                    const packagesSource = await getOrderPackages(text)
-                    const packagesData = []
-                    if (packagesSource?.length) {
-                        for (var i = 0; i < packagesSource.length; i++) {
-                            try {
-                                if (packagesSource[i]?.package_sn) {
-                                    const { package_sn, tracking_number, ship_company_name, ship_logistics_type, shipping_label_url } = await getOrderPackageShippingLabel(packagesSource[i]?.package_sn) ?? {}
-                                    if (package_sn && tracking_number && shipping_label_url) {
-                                        const dataSource = await fetch(shipping_label_url).then(response => {
-                                            if (!response.ok) {throw new Error('网络响应不正常');}
-                                            return response.blob()
-                                            
-                                        }).then((blob) => {
-                                            return new Promise((resolve) => {
-                                                const reader = new FileReader();
-                                                reader.onloadend = function() {resolve(reader.result)};
-                                                reader.readAsDataURL(blob);
-                                            })
-                                        })
-                                        packagesData.push({ package_sn, tracking_number, ship_company_name, ship_logistics_type, shipping_label_url, dataSource })
-                                    }
-                                }
-                            } catch(err) {console.error(err)}
-                        }
-                    }
-                    if (addressMap[text]) {
-                        addressMap[text].packagesData = packagesData
-                        copyToClipboard(JSON.stringify(addressMap[text]))
-                        launch()
-                        return
-                    }
-                    getAddress(text).then((res) => {
-                        if (res) {
-                            res.packagesData = packagesData
-                            copyToClipboard(JSON.stringify(res))
-                            launch()
-                            addressMap[text] = res
-                        }
-                    })
+                    getAddrAndPackage(text, href)
                 }
             })
         }

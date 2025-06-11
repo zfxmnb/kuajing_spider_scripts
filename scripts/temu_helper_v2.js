@@ -17,13 +17,18 @@
 // @grant        unsafeWindow
 // @require      https://cdn.bootcdn.net/ajax/libs/xlsx/0.17.0/xlsx.full.min.js
 // @require      https://ghfast.top/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/temu_helper_v2.core.js
+// @require      https://ghfast.top/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/fetchInterceptor.core.js
 // ==/UserScript==
 
 // 代理
 // https://gh-proxy.com/$GITHUB_URL
 // https://ghfast.top/$GITHUB_URL
 (async function() {
+    let fetchInterceptor
+    try {
+        fetchInterceptor = fetchInterceptorInit();
+    } catch (err) {}
     setTimeout(() => {
-        temu_helper_v2_core();
+        temu_helper_v2_core(fetchInterceptor);
     }, 100)
 })();
