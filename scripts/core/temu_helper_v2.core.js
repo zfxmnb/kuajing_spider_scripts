@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202506111716')
+    console.log('temu_helper_v2_core running', '202506112008')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -1116,6 +1116,10 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         .hide {
             display: none;
         }
+        .temu_plugin_order_face_sheet {
+            padding-left: 3px;
+            font-size: 10px;
+        }
         .temu_plugin_sku_extra, .temu_plugin_order_extra {
             display: block;
             text-align: left;
@@ -1266,18 +1270,25 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     }
     function orderUpdate() {
         console.log('订单视图更新')
-        document.querySelectorAll('.temu_plugin_order_extra').forEach((ele) => {
+        document.querySelectorAll('.temu_plugin_order_extra, .temu_plugin_order_face_sheet').forEach((ele) => {
             ele.remove()
         })
         const orderEles = findElementsByText('PO-')
         orderEles.filter((ele) => ele?.childNodes?.[0]?.nodeValue?.match?.(/^PO\-[\d]+\-[\d]+/)).forEach((ele) => {
             const parentOrderId = ele?.childNodes?.[0]?.nodeValue
+            if (parentOrderId) {
+                const span = document.createElement('span')
+                span.className = 'temu_plugin_order_face_sheet'
+                span.dataset.order = parentOrderId
+                span.innerHTML = `<a data-order=${parentOrderId}">面单</a>`
+                ele.appendChild(span)
+            }
             currentOrderData.filter((item) => item.parentOrderId === parentOrderId)?.forEach(({ id, title, price, costPrice, profit, profitMargin, quantity, tag, settled }) => {
                 const span = document.createElement('span')
                 span.className = 'temu_plugin_order_extra'
                 let html = ''
                 if(agentSeller) {
-                    html += `<div class="temu_plugin_order_extra_gooditem" data-id="${id}" data-order${parentOrderId}">
+                    html += `<div class="temu_plugin_order_extra_gooditem" data-id="${id}" data-order=${parentOrderId}">
                     <i class="temu_plugin_order_extra_gooditem_close" data-id="${id}">
                         <svg width="8" height="8" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M4.00005 4.78487L7.10767 7.89249L7.85013 7.15002L4.74251 4.04241L7.89243 0.892487L7.14997 0.150024L4.00005 3.29995L0.850128 0.150024L0.107666 0.892487L3.25759 4.04241L0.14997 7.15002L0.892432 7.89249L4.00005 4.78487Z" fill="#474F5E"/>
@@ -1646,6 +1657,10 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
 
         document.body.addEventListener('click', async (e) => {
             const ele = e.target
+            if (ele.closest('.temu_plugin_order_face_sheet')) {
+                const order = ele.dataset.order
+                getAddrAndPackage(order)
+            }
             if (ele.closest('.temu_plugin_order_extra_gooditem_close') && confirm('是否要移除订单')) {
                 const id = ele.closest('.temu_plugin_order_extra_gooditem_close').dataset.id
                 if (id) {
