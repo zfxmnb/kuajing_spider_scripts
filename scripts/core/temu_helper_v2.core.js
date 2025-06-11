@@ -1488,6 +1488,14 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     getAddrAndPackage(text, href)
                 }
             })
+            if (window.location.pathname === '/mmsos/online-shipping.html') {
+                setTimeout(() => {
+                    const oneClickImport = findElementsByText('一键填充')?.[0]
+                    oneClickImport?.click()
+                    document.querySelector('#packageList[0].warehouseId input')?.click()
+                }, 1000)
+            }
+
         }
     }
     // 订单
