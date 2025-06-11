@@ -1036,9 +1036,9 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     }
     const addressMap = {}
     const getAddrAndPackage = async (text, href) => {
-        const launch = () => {
+        const launch = (packagesData) => {
             const isHttp = !!href && /^#*http/.test(href)
-            if (confirm(`地址复制完成！${isHttp ? '是否跳转去下单': ''}`) && isHttp) {
+            if (confirm(`地址复制完成${packagesData?.length ? '[含面单]': '[不含面单]'}！${isHttp ? '是否跳转去下单': ''}`) && isHttp) {
                 let url = window.open(href.replace(/^#+/, ''))
                 if (url.includes("https://xhl.topwms.com/warehouse/stock_list")) {
                     url = url.replace("https://xhl.topwms.com/warehouse/stock_list", "https://xhl.topwms.com/manual_order/index")
@@ -1074,14 +1074,14 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         if (addressMap[text]) {
             addressMap[text].packagesData = packagesData
             copyToClipboard(JSON.stringify(addressMap[text]))
-            launch()
+            launch(packagesData)
             return
         }
         await getAddress(text).then((res) => {
             if (res) {
                 res.packagesData = packagesData
                 copyToClipboard(JSON.stringify(res))
-                launch()
+                launch(packagesData)
                 addressMap[text] = res
             }
         })
@@ -1491,7 +1491,6 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
             if (window.location.pathname === '/mmsos/online-shipping.html') {
                 const timer = setInterval(() => {
                     const oneClickImport = findElementsByText('一键填充')?.[0]
-                    console.log(oneClickImport)
                     if (!oneClickImport) return
                     clearInterval(timer)
                     oneClickImport?.click()
@@ -1510,7 +1509,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                                 body = await url.json()
                             } else {
                                 if (options?.body && typeof options?.body === 'string') {
-                                    body = JSON.parse(options.body)
+                                    body = JSON.parse(options?.body)
                                 } else if (options?.body instanceof Object) {
                                     body = options?.body
                                 }
@@ -1697,7 +1696,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
 
         document.body.addEventListener('click', async (e) => {
             const ele = e.target
-            if (ele.closest('.temu_plugin_order_face_sheet')) {
+            if (ele.closest('.temu_plugin_order_face_sheet') || ele.classList.contains('temu_plugin_order_face_sheet')) {
                 const order = ele.dataset.order
                 getAddrAndPackage(order)
             }
