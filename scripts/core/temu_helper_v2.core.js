@@ -1286,13 +1286,13 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     <span class="temu_plugin_order_extra_goodname" title="${title}">${title}</span>
                     ${!price || price <= costPrice || !costPrice ? '<b style="color:red;font-size:16px;">!!&nbsp;</b>' : ''}<input title="子单售卖金额" type="number" data-price="${price}" value="${price}" onchange="this.style.color='red'"></input>-<input type="number" title="子单成本金额"  data-costprice="${costPrice}" value="${costPrice}" onchange="this.style.color='red'"></input>(${quantity})=${profit}(${profitMargin}%)
                     &nbsp;<a data-id="${id}" class="temu_plugin_order_extra_confirm" href="javascript:;">确认</a>&nbsp;<a data-id="${id}" class="temu_plugin_order_extra_cancel" href="javascript:;">取消</a>&nbsp;<a data-id="${id}" class="temu_plugin_order_extra_reset_price" href="javascript:;">重置售价</a>&nbsp;<a data-id="${id}" class="temu_plugin_order_extra_reset_cost" href="javascript:;">重置原价</a>
-                    ${settled || settled === false ? `<br/>${settled ? '<span class="temu_plugin_order_settled">已结算</span>': '<span class="temu_plugin_order_unsettled">待结算</span>'}`: '<br/>'}
+                    ${settled || settled === false ? `<br/>${settled ? '<span class="temu_pßlugin_order_settled">已结算</span>': '<span class="temu_plugin_order_unsettled">待结算</span>'}`: '<br/>'}
                     标签:&nbsp;<span data-id="${id}" title="${tag || '编辑订单标签'}" class="temu_plugin_order_tag">${tag || ''}</span>
                     </div>`
                 }
                 span.innerHTML = html
                 // ele.appendChild(span)
-                ele.parentElement.insertBefore(span, ele)
+                ele.parentElement.insertBefore(span, ele?.nextElementSibling)
             })
         })
         const temu_time = root.querySelector('#temu_orders_time')
