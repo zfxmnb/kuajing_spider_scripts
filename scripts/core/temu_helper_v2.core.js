@@ -1035,7 +1035,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         })
     }
     const addressMap = {}
-    const getAddrAndPackage = async (id, href) => {
+    const getAddrAndPackage = async (text, href) => {
         const launch = () => {
             const isHttp = !!href && /^#*http/.test(href)
             if (confirm(`地址复制完成！${isHttp ? '是否跳转去下单': ''}`) && isHttp) {
@@ -1280,7 +1280,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 const span = document.createElement('span')
                 span.className = 'temu_plugin_order_face_sheet'
                 span.dataset.order = parentOrderId
-                span.innerHTML = `<a data-order=${parentOrderId}">面单</a>`
+                span.innerHTML = `<a data-order=${parentOrderId}" href="javascript:;">面单</a>`
                 ele.appendChild(span)
             }
             currentOrderData.filter((item) => item.parentOrderId === parentOrderId)?.forEach(({ id, title, price, costPrice, profit, profitMargin, quantity, tag, settled }) => {
