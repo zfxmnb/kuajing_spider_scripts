@@ -1446,7 +1446,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     }
     function init () {
         const tableObserver = new MutationObserver(debounce((list) => {
-            if (list.some((item) => [...item.removedNodes, ...item.addedNodes].some((ele) => !ele.classList?.contains?.('temu_plugin_sku_extra') && !ele?.classList?.contains?.('temu_plugin_order_extra')))) {
+            if (list.some((item) => [...item.removedNodes, ...item.addedNodes].some((ele) => !ele.classList?.contains?.('temu_plugin_sku_extra') && !ele?.classList?.contains?.('temu_plugin_order_extra') && !ele?.classList?.contains?.('temu_plugin_order_face_sheet')))) {
                 update()
             }
         }, 1000));
