@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202506112008')
+    console.log('temu_helper_v2_core running', '202506112350')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -1065,7 +1065,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                                     reader.readAsDataURL(blob);
                                 })
                             })
-                            packagesData.push({ package_sn, tracking_number, ship_company_name, ship_logistics_type, shipping_label_url, dataSource })
+                            packagesData.push({ package_sn, tracking_number, ship_company_name, ship_logistics_type, shipping_label_url, dataSource, copy_time: Date.now() })
                         }
                     }
                 } catch(err) {console.error(err)}
@@ -1501,17 +1501,26 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     clearInterval(timer)
                 }, 10000)
                 
-                fetchInterceptor(`${window.location.origin}/mms/eagle/package/online/batch_send`, async (response, _, options) => {
+                fetchInterceptor(`${window.location.origin}/mms/eagle/package/online/batch_send`, async (response, url, options) => {
                     const result = await response.json()
-                    console.log('fetchInterceptor:', result)
                     if (result.success) {
                         try {
-                            const body = JSON.parse(options.body)
-                            console.log('fetchInterceptor:', body)
-                            const orderId = body.package_sn
-                            if (orderId) {
-                                if (confirm('是否立即复制面单！')) {
-                                    await getAddrAndPackage(orderId)
+                            let body = null
+                            if (url instanceof Request) {
+                                body = await url.json()
+                            } else {
+                                if (options?.body && typeof options?.body === 'string') {
+                                    body = JSON.parse(options.body)
+                                } else if (options?.body instanceof Object) {
+                                    body = options?.body
+                                }
+                            }
+                            if (body?.send_request_list?.length === 1 && body?.send_request_list?.[0]?.order_send_info_list?.length === 1) {
+                                const orderId = body?.send_request_list?.[0]?.order_send_info_list?.[0]?.parent_order_sn
+                                if (orderId) {
+                                    if (confirm('是否立即复制面单！')) {
+                                        await getAddrAndPackage(orderId)
+                                    }
                                 }
                             }
                         } catch (err) {}

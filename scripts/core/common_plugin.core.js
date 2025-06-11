@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-    console.log('common_plugin_core running', '202506101745')
+    console.log('common_plugin_core running', '202506112345')
     const matchDomains = ['www.gigab2b.com', 'www.saleyee.cn', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'returnhelper.com', 'oms.xlwms.com']
     // 一下内容在指定域名下生效
     if (!matchDomains.includes(window.location.host)) {return}
@@ -361,6 +361,10 @@ window.common_plugin_core = async () => {
         app.classList.remove('hide')
         app.dataSource = data
         let html = ''
+        if (data?.copy_time) {
+            const date = new Date(data?.copy_time)
+            html+=`<div><span class="addr_item_value">${date.toLocaleString().replace(/(^\d{4}\/)|(:\d{1,2}$)/g, '')}</span></div>`
+        }
         html+=`<div>ID：<span class="addr_item_value">${data?.parent_order_sn}</span></div>`
         html+=`<div>姓名：<span class="addr_item_value">${data?.receipt_name}</span></div>`
         html+=`<div>电话：<span class="addr_item_value">${data?.mobile}</span></div>`
