@@ -1490,14 +1490,16 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
             })
             if (window.location.pathname === '/mmsos/online-shipping.html') {
                 const timer = setInterval(() => {
-                    const selector = document.querySelector('[id="packageList[0].warehouseId"] input')
-                    if (!selector) return
+                    const oneClickImport = findElementsByText('一键填充')?.[0]
+                    console.log(oneClickImport)
+                    if (!oneClickImport) return
                     clearInterval(timer)
-                    setTimeout(() => {
-                        findElementsByText('一键填充')?.[0]?.click()
-                        selector?.click()
-                    }, 1000)
+                    oneClickImport?.click()
+                    document.querySelector('[id="packageList[0].warehouseId"] input')?.click()
                 }, 1000)
+                setTimeout(() => {
+                    clearInterval(timer)
+                }, 10000)
             }
 
         }
