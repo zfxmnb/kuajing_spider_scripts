@@ -11,7 +11,7 @@ function fetchInterceptorInit (w = window) {
             if (fetchInterceptorMap[key] && typeof fetchInterceptorMap[key] === 'function') {
                 const responseClone = response.clone(); // 克隆响应以便后续处理
                 try {
-                    const resp = await fetchInterceptorMap[key](responseClone)
+                    const resp = await fetchInterceptorMap[key](responseClone, ...args)
                     if (resp instanceof Response) return resp
                 } catch (err) {}
             }
