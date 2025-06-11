@@ -1493,8 +1493,10 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     const selector = document.querySelector('[id="packageList[0].warehouseId"] input')
                     if (!selector) return
                     clearInterval(timer)
-                    findElementsByText('一键填充')?.[0]?.click()
-                    selector?.click()
+                    setTimeout(() => {
+                        findElementsByText('一键填充')?.[0]?.click()
+                        selector?.click()
+                    }, 1000)
                 }, 1000)
             }
 
