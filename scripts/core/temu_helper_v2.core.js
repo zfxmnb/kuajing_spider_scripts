@@ -1077,7 +1077,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
             launch()
             return
         }
-        getAddress(text).then((res) => {
+        await getAddress(text).then((res) => {
             if (res) {
                 res.packagesData = packagesData
                 copyToClipboard(JSON.stringify(res))
@@ -1501,10 +1501,20 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     clearInterval(timer)
                 }, 10000)
                 
-                fetchInterceptor('https://agentseller-us.temu.com/mms/eagle/package/online/batch_send', async (response) => {
-                    const data = await response.json()
-                    if (data.success) {
-                        response.header.data
+                fetchInterceptor(`${window.location.origin}/mms/eagle/package/online/batch_send`, async (response, _, options) => {
+                    const result = await response.json()
+                    console.log('fetchInterceptor:', result)
+                    if (result.success) {
+                        try {
+                            const body = JSON.parse(options.body)
+                            console.log('fetchInterceptor:', body)
+                            const orderId = body.package_sn
+                            if (orderId) {
+                                if (confirm('是否立即复制面单！')) {
+                                    await getAddrAndPackage(orderId)
+                                }
+                            }
+                        } catch (err) {}
                     }
                 })
             }
