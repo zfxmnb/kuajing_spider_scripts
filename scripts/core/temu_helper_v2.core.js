@@ -1065,7 +1065,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                                     reader.readAsDataURL(blob);
                                 })
                             })
-                            packagesData.push({ package_sn, tracking_number, ship_company_name, ship_logistics_type, shipping_label_url, dataSource, copy_time: Date.now() })
+                            packagesData.push({ package_sn, tracking_number, ship_company_name, ship_logistics_type, shipping_label_url, dataSource })
                         }
                     }
                 } catch(err) {console.error(err)}
@@ -1080,6 +1080,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         await getAddress(text).then((res) => {
             if (res) {
                 res.packagesData = packagesData
+                res.copy_time = Date.now()
                 copyToClipboard(JSON.stringify(res))
                 launch(packagesData)
                 addressMap[text] = res

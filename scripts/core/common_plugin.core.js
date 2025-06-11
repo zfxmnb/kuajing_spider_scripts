@@ -473,7 +473,7 @@ window.common_plugin_core = async () => {
         let c1Value = window.localStorage.getItem('__c1_value__')
         if (c1Value) {
             c1?.click()
-            await sleep(1000)
+            await sleep(1200)
             findElementsByText(c1Value)?.[0]?.click?.()
         }
         const c1Input = c1.querySelector('input')
@@ -492,7 +492,7 @@ window.common_plugin_core = async () => {
         let c2Value = window.localStorage.getItem('__c2_value__')
         if (c2Value) {
             c2?.click()
-            await sleep(1000)
+            await sleep(1200)
             findElementsByText(c2Value)?.[0]?.click?.()
         }
         const c2Input = c2.querySelector('input')
