@@ -1502,9 +1502,9 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 }, 10000)
                 
                 fetchInterceptor?.(`${window.location.origin}/mms/eagle/package/online/batch_send`, async (response, url, options) => {
-                    debugger
+                    // debugger
                     const result = await response.json()
-                    console.log('fetchInterceptor response: ', result)
+                    // console.log('fetchInterceptor response: ', result)
                     if (result.success) {
                         try {
                             let body = null
@@ -1517,7 +1517,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                                     body = options?.body
                                 }
                             }
-                            console.log('fetchInterceptor body: ', body)
+                            // console.log('fetchInterceptor body: ', body)
                             if (body?.send_request_list?.length === 1 && body?.send_request_list?.[0]?.order_send_info_list?.length === 1) {
                                 const orderId = body?.send_request_list?.[0]?.order_send_info_list?.[0]?.parent_order_sn
                                 if (orderId) {

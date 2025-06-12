@@ -1,5 +1,8 @@
 function fetchInterceptorInit (w = window) {
-    const fetchInterceptorMap = {}
+    if (w.__fetchInterceptor__) {
+        return w.__fetchInterceptor__
+    }
+    w.__fetchInterceptorMap__ = {}
     try {
         // 自定义 fetch 拦截器
         const originalFetch = w.fetch;
@@ -8,17 +11,18 @@ function fetchInterceptorInit (w = window) {
             const response = await originalFetch(...args);
             // 你可以在这里处理响应数据
             const key = response.url?.split?.('?')?.[0]
-            if (fetchInterceptorMap[key] && typeof fetchInterceptorMap[key] === 'function') {
+            if (w.__fetchInterceptorMap__[key] && typeof w.__fetchInterceptorMap__[key] === 'function') {
                 const responseClone = response.clone(); // 克隆响应以便后续处理
                 try {
-                    const resp = await fetchInterceptorMap[key](responseClone, ...args)
+                    const resp = await w.__fetchInterceptorMap__[key](responseClone, ...args)
                     if (resp instanceof Response) return resp
                 } catch (err) {}
             }
             return response; // 返回原始响应
         };
     } catch(err) {}
-    return (key, fn) => {
-        fetchInterceptorMap[key] = fn
+    w.__fetchInterceptor__ = (key, fn) => {
+        w.__fetchInterceptorMap__[key] = fn
     }
+    return w.__fetchInterceptor__
 }
