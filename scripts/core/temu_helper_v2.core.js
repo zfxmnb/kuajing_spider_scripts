@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202506112350')
+    console.log('temu_helper_v2_core running', '202506121258')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -1501,7 +1501,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     clearInterval(timer)
                 }, 10000)
                 
-                fetchInterceptor(`${window.location.origin}/mms/eagle/package/online/batch_send`, async (response, url, options) => {
+                fetchInterceptor?.(`${window.location.origin}/mms/eagle/package/online/batch_send`, async (response, url, options) => {
                     const result = await response.json()
                     console.log('fetchInterceptor response: ', result)
                     if (result.success) {
