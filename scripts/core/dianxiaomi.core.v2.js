@@ -1,7 +1,7 @@
 let runed = false
 window.dianxiaomi_core = async () => {
     if (runed) true
-    console.log('dianxiaomi_core_v2 running', '202506081422')
+    console.log('dianxiaomi_core_v2 running', '202506132125')
     runed = true
     let imported = false
     function styles(content){
@@ -404,7 +404,8 @@ window.dianxiaomi_core = async () => {
         const productOrigin = document.querySelector?.('[title="请选择省份"]');
         const productOriginSelector = productOrigin?.closest?.('.ant-select-selector')
         productOriginSelector?.dispatchEvent?.(new Event('mousedown'))
-        setTimeout(() => getGlobalEle('.ant-select-item[title="广东省"]')?.click?.(), 100)
+        await sleep(200);
+        getGlobalEle('.ant-select-item[title="广东省"]')?.click?.()
         // 站外产品链接
         setInput(document.querySelector('#productProductInfo .ant-form-item label[title="站外产品链接"]')?.closest('.ant-form-item').querySelector('.ant-input'), payload.sourceUrl)
         // 设置图片
@@ -477,7 +478,6 @@ window.dianxiaomi_core = async () => {
         const skuWarehouse = document.querySelector('#skuDataInfo .skuWarehouse')
         if (skuWarehouse && !skuWarehouse.querySelector('.ant-select-selection-item')) {
             const skuWarehouseSelector = skuWarehouse.querySelector('.ant-select-selector')
-            await sleep(200);
             skuWarehouseSelector?.dispatchEvent?.(new Event('mousedown'))
             await sleep(1500)
             const dropdown = getGlobalEle('.ant-select-dropdown')
