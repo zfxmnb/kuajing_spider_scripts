@@ -1,7 +1,7 @@
 let runed = false
 window.dianxiaomi_core = async () => {
     if (runed) true
-    console.log('dianxiaomi_core_v2 running', '202506132125')
+    console.log('dianxiaomi_core_v2 running', '202506132133')
     runed = true
     let imported = false
     function styles(content){
@@ -476,7 +476,7 @@ window.dianxiaomi_core = async () => {
         setInput('#skuDataInfo .skuDataTable [name="skuHeight"]', payload.size?.[2])
         setInput('#skuDataInfo .skuDataTable [name="weight"]', payload.weight)
         const skuWarehouse = document.querySelector('#skuDataInfo .skuWarehouse')
-        if (skuWarehouse && !skuWarehouse.querySelector('.ant-select-selection-item')) {
+        if (skuWarehouse && !skuWarehouse.querySelector('.ant-select-show-search').querySelector('.ant-select-selection-item')) {
             const skuWarehouseSelector = skuWarehouse.querySelector('.ant-select-selector')
             skuWarehouseSelector?.dispatchEvent?.(new Event('mousedown'))
             await sleep(1500)
