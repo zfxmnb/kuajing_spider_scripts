@@ -1,7 +1,7 @@
 let runed = false
 window.dianxiaomi_shein_core = async () => {
     if (runed) true
-    console.log('dianxiaomi_core_shein running', '202506141008')
+    console.log('dianxiaomi_core_shein running', '202506141048')
     runed = true
     let imported = false
     function styles(content){
@@ -186,10 +186,10 @@ window.dianxiaomi_shein_core = async () => {
     const importBtn = root.querySelector('#dianxiaomi_import')
     const payloadBtn = root.querySelector('#dianxiaomi_payload')
     let copyMap = []
-    let priceRate = Number(window.localStorage?.getItem?.('__price_rate__') || '1')
+    let priceRate = Number(window.localStorage?.getItem?.('__price_rate_shein__') || '1')
     priceRate = isNaN(priceRate) ? 1 : priceRate
     priceRateInput && (priceRateInput.value = priceRate)
-    let stockRate = Number(window.localStorage?.getItem?.('__stock_rate__') || '1')
+    let stockRate = Number(window.localStorage?.getItem?.('__price_rate_shein__') || '1')
     stockRate = isNaN(stockRate) ? 1 : stockRate
     stockRateInput && (stockRateInput.value = stockRate)
     const parseItem = (title, content, value, nocopy) => {
