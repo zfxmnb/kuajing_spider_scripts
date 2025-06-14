@@ -368,7 +368,7 @@ window.dianxiaomi_shein_core = async () => {
         await sleep(500);
         // 变种信息
         setInput('#skuInfoTable [name="skuName"]', payload.skuId)
-        setInput('#skuInfoTable [name="supplyPrice"]', numberFixed(payload.price_CNY * priceRate))
+        setInput('#skuInfoTable [name="supplyPrice"]', numberFixed(payload.price * priceRate))
         setInput('#skuInfoTable [name="skuStock"]', numberFixed(payload.stock * stockRate, 0))
         setInput('#skuInfoTable [name="skuWeight"]', payload.weight)
         setInput('#skuInfoTable [name="skuLength"]', payload.size?.[0] == 900 ? 899: payload.size?.[0])
