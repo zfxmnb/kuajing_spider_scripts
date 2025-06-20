@@ -189,7 +189,7 @@ window.dianxiaomi_shein_core = async () => {
     let priceRate = Number(window.localStorage?.getItem?.('__price_rate_shein__') || '1')
     priceRate = isNaN(priceRate) ? 1 : priceRate
     priceRateInput && (priceRateInput.value = priceRate)
-    let stockRate = Number(window.localStorage?.getItem?.('__price_rate_shein__') || '1')
+    let stockRate = Number(window.localStorage?.getItem?.('__stock_rate_shein__') || '1')
     stockRate = isNaN(stockRate) ? 1 : stockRate
     stockRateInput && (stockRateInput.value = stockRate)
     const parseItem = (title, content, value, nocopy) => {
