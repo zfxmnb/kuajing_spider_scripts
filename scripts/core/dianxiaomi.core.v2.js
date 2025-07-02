@@ -76,19 +76,18 @@ window.dianxiaomi_core = async () => {
     }
     // 模糊匹配内容元素
     const findElementsByText = (text, parent = document, filter = () => true) => {
-        // 查找包含特定文本的文本节点
-        const matchingTextNodes = document.evaluate(
-            `//text()[contains(., "${text}") and not(ancestor::script)]`,
+        // 查找包含特定文本的节点
+        const matchingNodes = document.evaluate(
+            `.//*[contains(text(), "${text}") and not(self::script)]`,
             parent,
             null,
-            XPathResult.UNORDERED_NODE_ITERATOR_TYPE,
-            null
+            XPathResult.ORDERED_NODE_ITERATOR_TYPE
         );
         const matchedNodes = [];
         let node
-        while ((node = matchingTextNodes.iterateNext())) {
-            if (!filter(node.parentElement)) continue
-            matchedNodes.push(node.parentElement);
+        while ((node = matchingNodes.iterateNext())) {
+            if (!filter(node)) continue
+            matchedNodes.push(node);
         }
         return matchedNodes
     }

@@ -154,18 +154,17 @@ window.common_plugin_core = async () => {
     }
      // 模糊匹配内容元素
      const findElementsByText = (text, parent = document) => {
-        // 查找包含特定文本的文本节点
-        const matchingTextNodes = document.evaluate(
-            `//text()[contains(., "${text}") and not(ancestor::script)]`,
+        // 查找包含特定文本的元素节点
+        const matchingNodes = document.evaluate(
+            `.//*[contains(text(), "${text}") and not(self::script)]`,
             parent,
             null,
-            XPathResult.UNORDERED_NODE_ITERATOR_TYPE,
-            null
+            XPathResult.ORDERED_NODE_ITERATOR_TYPE
         );
         const matchedNodes = [];
         let node
-        while ((node = matchingTextNodes.iterateNext())) {
-            parent.contains(node) && matchedNodes.push(node.parentElement);
+        while ((node = matchingNodes.iterateNext())) {
+            matchedNodes.push(node);
         }
         return matchedNodes
     }
