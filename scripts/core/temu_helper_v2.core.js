@@ -1499,9 +1499,19 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     })
                     list = list?.filter(({ currentStockAvailable }) => currentStockAvailable)
                     if (list?.length) {
-                        await preCheckWarehouseInfo(productId, skuId, list.map(({warehouseId}) => warehouseId))
-                        const result = await updateMmsBtgProductSalesStock(productId, skuId, list)
-                        result?.isSuccess && ele.remove()
+                        try {
+                            await preCheckWarehouseInfo(productId, skuId, list.map(({warehouseId}) => warehouseId))
+                            const result = await updateMmsBtgProductSalesStock(productId, skuId, list)
+                            if (result?.isSuccess) {
+                                ele.remove()
+                            } else {
+                                ele.innerText = '清空库存失败'
+                            }
+                        } catch (err) {
+                            ele.innerText = '清空库存失败'
+                        }
+                    } else {
+                        ele.remove()
                     }
                 }
             }
@@ -1531,7 +1541,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     }
     function init () {
         const tableObserver = new MutationObserver(debounce((list) => {
-            if (list.some((item) => [...item.removedNodes, ...item.addedNodes].some((ele) => !ele.classList?.contains?.('temu_plugin_sku_extra') && !ele?.classList?.contains?.('temu_plugin_order_extra') && !ele?.classList?.contains?.('temu_plugin_order_face_sheet')))) {
+            if (list.some((item) => [...item.removedNodes, ...item.addedNodes].some((ele) => !ele?.closest?.('.temu_plugin_sku_extra') && !ele?.closest?.('.temu_plugin_order_extra') && !ele?.closest?.('.temu_plugin_order_face_sheet')))) {
                 update()
             }
         }, 1000));
