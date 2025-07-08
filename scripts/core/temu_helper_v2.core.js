@@ -368,6 +368,63 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         })
         return skus
     }
+    //preCheckWarehouseInfo
+    const preCheckWarehouseInfo = async (productId, skuId, warehouseIds) => {
+        return await fetch('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/preCheckWarehouseInfo', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                "mallid": await getMallId(),
+            },
+            body: JSON.stringify({"productId":productId,"preCheckSkuWarehouseList":warehouseIds?.map((warehouseId) => ({"productSkuId":skuId,"warehouseId":warehouseId}))})
+        })
+        .then(response => response.json())
+        .then((data) => {
+            if (!data?.success) {
+                console.error('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/preCheckWarehouseInfo', data)
+                return Promise.reject(data)
+            }
+            return data?.result
+        })
+    }
+    //updateMmsBtgProductSalesStock
+    const updateMmsBtgProductSalesStock = async (productId, skuId, skuStockChangeList) => {
+        return await fetch('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/updateMmsBtgProductSalesStock', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                "mallid": await getMallId(),
+            },
+            body: JSON.stringify({"productId":productId,"skuStockChangeList":skuStockChangeList?.map((props) => ({"productSkuId":skuId, "currentShippingMode":1, ...props})),"skuTypeChangeList":[],"isCheckVersion":true,"source":0})
+        })
+        .then(response => response.json())
+        .then((data) => {
+            if (!data?.result?.isSuccess) {
+                console.error('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/updateMmsBtgProductSalesStock', data)
+                return Promise.reject(data)
+            }
+            return data?.result
+        })
+    }
+    // 获取商品库存数据
+    const getTemuSkuStockList = async (productId, skuId) => {
+        return await fetch('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/queryBtgProductStockInfo', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                "mallid": await getMallId(),
+            },
+            body: JSON.stringify({"productId":productId,"productSkuIdList":[skuId]})
+        })
+        .then(response => response.json())
+        .then((data) => {
+            if (!data?.result?.productStockList?.length) {
+                console.error('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/queryBtgProductStockInfo 接口请求失败', data)
+                return Promise.reject(data)
+            }
+            return data?.result?.productStockList
+        })
+    }
     async function getTemuRefundList(groupSearchType = 2106, page = 1, scopeType = 0) {
         let timeSearchType = 5000 + (Number(scopeType) || 0)
         const result = await fetch('/garen/mms/afterSales/queryReturnAndRefundPaList', {
@@ -1246,6 +1303,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 html += `<a href="javascript:;" class="temu_plugin_sku_extra_link" data-sku="${sku}">修改链接</a>`
                 if(seller) {
                     html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_remove" data-sku="${sku}">移除商品</a></br>`
+                    html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_stock_remove" data-product="${item['productId']}" data-sku="${sku}">清空库存</a></br>`
                 }
                 span.innerHTML = html
                 ele.appendChild(span)
@@ -1376,6 +1434,13 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 forceUpdate()
             }
         })
+        const keyMap = {};
+        document.addEventListener('keydown', function(event) {
+            keyMap[event.key] = true;
+        });
+        document.addEventListener('keyup', function(event) {
+            delete keyMap[event.key];
+        });
         document.body.addEventListener('click', async (e) => {
             const ele = e.target
             const sku = ele.dataset?.sku
@@ -1418,6 +1483,24 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 if (data.index >= 0 && dataSource[data.index]) {
                     dataSource.splice(data.index, 1)
                     productsDataPush(dataSource, { params: { force: true } })
+                }
+            }
+            const stockRenove = ele.closest('.temu_plugin_sku_extra_stock_remove')
+            if (sku && stockRenove) {
+                const productId = stockRenove.dataset?.product
+                const skuId = stockRenove.dataset?.sku
+                if (productId && skuId && (keyMap['Control'] || confirm('是否清空商品库存'))) {
+                    const stockList = await getTemuSkuStockList(productId, skuId)
+                    const list = []
+                    stockList?.forEach(({ shippingMode, warehouseStockList }) => {
+                        warehouseStockList?.forEach(({ stockAvailable, warehouseInfo }) => {
+                            list.push({"stockDiff":-stockAvailable,"currentStockAvailable":stockAvailable,"currentShippingMode":shippingMode,"warehouseId":warehouseInfo.warehouseId})
+                        })
+                    })
+                    if (list?.length) {
+                        await preCheckWarehouseInfo(productId, skuId, stockList.map(({warehouseId}) => warehouseId))
+                        await updateMmsBtgProductSalesStock(productId, skuId, list)
+                    }
                 }
             }
             if (ele.closest('.temu_plugin_order_tag')) {
