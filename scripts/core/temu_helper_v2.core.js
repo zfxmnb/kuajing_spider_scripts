@@ -1302,7 +1302,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 }
                 html += `<a href="javascript:;" class="temu_plugin_sku_extra_link" data-sku="${sku}">修改链接</a>`
                 if(seller) {
-                    html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_remove" data-sku="${sku}">移除商品</a></br>`
+                    html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_remove" data-sku="${sku}">移除商品</a>`
                     html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_stock_remove" data-product="${items['productId']}" data-sku="${sku}">清空库存</a></br>`
                 }
                 span.innerHTML = html
@@ -1499,7 +1499,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     })
                     list = list?.filter(({ currentStockAvailable }) => currentStockAvailable)
                     if (list?.length) {
-                        await preCheckWarehouseInfo(productId, skuId, stockList.map(({warehouseId}) => warehouseId))
+                        await preCheckWarehouseInfo(productId, skuId, list.map(({warehouseId}) => warehouseId))
                         await updateMmsBtgProductSalesStock(productId, skuId, list)
                     }
                 }
