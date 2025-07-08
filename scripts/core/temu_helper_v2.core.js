@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202506122123')
+    console.log('temu_helper_v2_core running', '202507082236')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -1303,7 +1303,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 html += `<a href="javascript:;" class="temu_plugin_sku_extra_link" data-sku="${sku}">修改链接</a>`
                 if(seller) {
                     html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_remove" data-sku="${sku}">移除商品</a></br>`
-                    html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_stock_remove" data-product="${item['productId']}" data-sku="${sku}">清空库存</a></br>`
+                    html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_stock_remove" data-product="${items['productId']}" data-sku="${sku}">清空库存</a></br>`
                 }
                 span.innerHTML = html
                 ele.appendChild(span)
@@ -1487,16 +1487,17 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
             }
             const stockRenove = ele.closest('.temu_plugin_sku_extra_stock_remove')
             if (sku && stockRenove) {
-                const productId = stockRenove.dataset?.product
-                const skuId = stockRenove.dataset?.sku
+                const productId = Number(stockRenove.dataset?.product)
+                const skuId = Number(stockRenove.dataset?.sku)
                 if (productId && skuId && (keyMap['Control'] || confirm('是否清空商品库存'))) {
                     const stockList = await getTemuSkuStockList(productId, skuId)
-                    const list = []
+                    let list = []
                     stockList?.forEach(({ shippingMode, warehouseStockList }) => {
                         warehouseStockList?.forEach(({ stockAvailable, warehouseInfo }) => {
                             list.push({"stockDiff":-stockAvailable,"currentStockAvailable":stockAvailable,"currentShippingMode":shippingMode,"warehouseId":warehouseInfo.warehouseId})
                         })
                     })
+                    list = list?.filter(({ currentStockAvailable }) => currentStockAvailable)
                     if (list?.length) {
                         await preCheckWarehouseInfo(productId, skuId, stockList.map(({warehouseId}) => warehouseId))
                         await updateMmsBtgProductSalesStock(productId, skuId, list)
