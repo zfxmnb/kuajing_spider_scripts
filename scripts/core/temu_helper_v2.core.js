@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202507082321')
+    console.log('temu_helper_v2_core running', '202507121516')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -1303,7 +1303,10 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 html += `<a href="javascript:;" class="temu_plugin_sku_extra_link" data-sku="${sku}">修改链接</a>`
                 if(seller) {
                     html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_remove" data-sku="${sku}">移除商品</a><br/>`
-                    html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_stock_remove" data-product="${items['productId']}" data-sku="${sku}">清空库存</a></br>`
+                    if (items['productId']) {
+                        html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_stock_remove" data-product="${items['productId']}" data-sku="${sku}">清空库存</a></br>`
+                        html += `<a href="javascript:;" class="temu_plugin_sku_extra_stock_add" data-product="${items['productId']}" data-sku="${sku}">补充库存</a>`
+                    }
                 }
                 span.innerHTML = html
                 ele.appendChild(span)
@@ -1485,10 +1488,10 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     productsDataPush(dataSource, { params: { force: true } })
                 }
             }
-            const stockRenove = ele.closest('.temu_plugin_sku_extra_stock_remove')
-            if (sku && stockRenove) {
-                const productId = Number(stockRenove.dataset?.product)
-                const skuId = Number(stockRenove.dataset?.sku)
+            const stockRemove = ele.closest('.temu_plugin_sku_extra_stock_remove')
+            if (sku && stockRemove) {
+                const productId = Number(stockRemove.dataset?.product)
+                const skuId = Number(stockRemove.dataset?.sku)
                 if (productId && skuId && (keyMap['Control'] || confirm('是否清空商品库存'))) {
                     const stockList = await getTemuSkuStockList(productId, skuId)
                     let list = []
@@ -1512,6 +1515,39 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                         }
                     } else {
                         ele.remove()
+                    }
+                }
+            }
+            const stockAdd = ele.closest('.temu_plugin_sku_extra_stock_add')
+            if (sku && stockAdd) {
+                const productId = Number(stockAdd.dataset?.product)
+                const skuId = Number(stockAdd.dataset?.sku)
+                if (productId && skuId) {
+                    const data = currentDataMap[skuId]
+                    let stock = Nuymber(prompt("库存", data?.stock ?? 1))
+                    stock = isNaN(stock) ? 0 : stock
+                    const stockList = await getTemuSkuStockList(productId, skuId)
+                    let list = []
+                    if (stockList?.length && stock) {
+                        const singleStock = Math.ceil(stock / stockList?.length)
+                        stockList?.forEach(({ shippingMode, warehouseStockList }) => {
+                            warehouseStockList?.forEach(({ stockAvailable, warehouseInfo }) => {
+                                if (!stockAvailable && stock > 0) {
+                                    const stockDiff = stock < singleStock ? stock : singleStock
+                                    stock -= singleStock
+                                    list.push({"stockDiff": stockDiff,"currentStockAvailable":stockAvailable,"currentShippingMode":shippingMode,"warehouseId":warehouseInfo.warehouseId})
+                                }
+                            })
+                        })
+                    }
+                    if (list?.length) {
+                        try {
+                            await preCheckWarehouseInfo(productId, skuId, list.map(({warehouseId}) => warehouseId))
+                            const result = await updateMmsBtgProductSalesStock(productId, skuId, list)
+                            if (result?.isSuccess) {
+                                ele.innerText = '追加库存'
+                            }
+                        } catch (err) {}
                     }
                 }
             }
