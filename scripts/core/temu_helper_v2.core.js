@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202507121516')
+    console.log('temu_helper_v2_core running', '202507121524')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -1524,7 +1524,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 const skuId = Number(stockAdd.dataset?.sku)
                 if (productId && skuId) {
                     const data = currentDataMap[skuId]
-                    let stock = Nuymber(prompt("库存", data?.stock ?? 1))
+                    let stock = Number(prompt("库存", data?.stock ?? 1))
                     stock = isNaN(stock) ? 0 : stock
                     const stockList = await getTemuSkuStockList(productId, skuId)
                     let list = []
