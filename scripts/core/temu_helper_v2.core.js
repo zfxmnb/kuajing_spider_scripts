@@ -2121,7 +2121,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     }
     const sellerInit = async () => {
         const productAutoSyncKey = `${Name}__temu_product_auto_sync_last_time__`
-        if (!AutoDisabled) {
+        if (!AutoDisabled && window.location.host.includes('agentseller.temu.com')) {
             setExactInterval(async () => {
                 const now = new Date()
                 console.log('定时同步商品数据', now.toLocaleString())
