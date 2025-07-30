@@ -332,7 +332,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         let total = 1
         while (pageItems.length < total) {
             page += 1
-            const result = await fetch('/bg-visage-mms/product/skc/pageQuery', {
+            const result = await fetch('/visage-agent-seller/product/skc/pageQuery', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -347,7 +347,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
             .then(response => response.json())
             .then((data) => {
                 if (!data?.result) {
-                    console.error('/bg-visage-mms/product/skc/pageQuery 接口请求失败', data)
+                    console.error('/visage-agent-seller/product/skc/pageQuery 接口请求失败', data)
                     return Promise.reject(data)
                 }
                 return data?.result
@@ -370,7 +370,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     }
     //preCheckWarehouseInfo
     const preCheckWarehouseInfo = async (productId, skuId, warehouseIds) => {
-        return await fetch('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/preCheckWarehouseInfo', {
+        return await fetch('/darwin-mms/api/kiana/ghost/btg/sales/stock/preCheckWarehouseInfo', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -381,7 +381,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         .then(response => response.json())
         .then((data) => {
             if (!data?.success) {
-                console.error('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/preCheckWarehouseInfo', data)
+                console.error('/darwin-mms/api/kiana/ghost/btg/sales/stock/preCheckWarehouseInfo', data)
                 return Promise.reject(data)
             }
             return data?.result
@@ -389,7 +389,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     }
     //updateMmsBtgProductSalesStock
     const updateMmsBtgProductSalesStock = async (productId, skuId, skuStockChangeList) => {
-        return await fetch('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/updateMmsBtgProductSalesStock', {
+        return await fetch('/darwin-mms/api/kiana/ghost/btg/sales/stock/updateMmsBtgProductSalesStock', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -400,7 +400,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         .then(response => response.json())
         .then((data) => {
             if (!data?.result?.isSuccess) {
-                console.error('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/updateMmsBtgProductSalesStock', data)
+                console.error('/darwin-mms/api/kiana/ghost/btg/sales/stock/updateMmsBtgProductSalesStock', data)
                 return Promise.reject(data)
             }
             return data?.result
@@ -408,7 +408,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     }
     // 获取商品库存数据
     const getTemuSkuStockList = async (productId, skuId) => {
-        return await fetch('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/queryBtgProductStockInfo', {
+        return await fetch('/darwin-mms/api/kiana/ghost/btg/sales/stock/queryBtgProductStockInfo', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -419,7 +419,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         .then(response => response.json())
         .then((data) => {
             if (!data?.result?.productStockList?.length) {
-                console.error('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/queryBtgProductStockInfo 接口请求失败', data)
+                console.error('/darwin-mms/api/kiana/ghost/btg/sales/stock/queryBtgProductStockInfo 接口请求失败', data)
                 return Promise.reject(data)
             }
             return data?.result?.productStockList
@@ -1008,7 +1008,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         let total = 1
         while (pageItems.length < total) {
             pageNum += 1
-            const result = await fetch('/marvel-supplier/api/xmen/select/search', {
+            const result = await fetch('/api/kiana/mms/robin/searchForSemiSupplier', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1079,7 +1079,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 adjustItems
             }
             if (data?.adjustItems?.length) {
-                await fetch('/marvel-mms/cn/api/kiana/gmp/bg/magneto/api/price/priceAdjust/gmpProductBatchAdjustPrice', {
+                await fetch('/api/kiana/magnus/mms/price/priceAdjust/gmpProductBatchAdjustPrice', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
