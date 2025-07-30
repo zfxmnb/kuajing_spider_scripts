@@ -19,8 +19,8 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     const oneDay = 24 * 60 * 60 * 1000
     const checkoutDays = 30
     // const CacheKey = '__temu_products__'
-    const seller = window.location.host.includes('seller.kuajingmaihuo.com')
     const agentSeller = window.location.host.includes('agentseller.temu.com') || window.location.host.includes('agentseller-us.temu.com')
+    const seller = window.location.host.includes('seller.kuajingmaihuo.com') || agentSeller
     const orderStatusMap = {
         1: '平台处理中',
         2: '未发货',

@@ -1,10 +1,10 @@
 window.common_plugin_core = async () => {
     console.log('common_plugin_core running', '202506112345')
-    const matchDomains = ['www.gigab2b.com', 'www.saleyee.cn', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'returnhelper.com', 'oms.xlwms.com']
+    const matchDomains = ['www.gigab2b.com', 'www.saleyee.com', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'returnhelper.com', 'oms.xlwms.com']
     // 一下内容在指定域名下生效
     if (!matchDomains.includes(window.location.host)) {return}
 
-    const saleCheckout = 'https://www.saleyee.cn/user/order/confirm.html'
+    const saleCheckout = 'https://www.saleyee.com/user/order/confirm.html'
     const gigab2bCheckout = 'https://www.gigab2b.com/index.php?route=account/sales_order/sales_order_management'
     const topwmsCheckout = 'https://xhl.topwms.com/manual_order/index'
     const goodcangCheckout = 'https://us.goodcang.com/order/add'
