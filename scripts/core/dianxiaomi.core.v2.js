@@ -1,7 +1,7 @@
 let runed = false
 window.dianxiaomi_core = async () => {
     if (runed) true
-    console.log('dianxiaomi_core_v2 running', '202506132133')
+    console.log('dianxiaomi_core_v2 running', '202508291638')
     runed = true
     let imported = false
     function styles(content){
@@ -101,7 +101,7 @@ window.dianxiaomi_core = async () => {
         const originalOpen = XMLHttpRequest.prototype.open;
         const originalSend = XMLHttpRequest.prototype.send;
         XMLHttpRequest.prototype.open = function(method, url) {
-            if (url.includes('/api/popTemuProduct/add.json')) this._is = true;
+            if (url.match(/\/api\/popTemuProduct\/add\w*\.json/)) this._is = true;
             return originalOpen.apply(this, arguments);
         };
         XMLHttpRequest.prototype.send = function (body, ...rest) {
