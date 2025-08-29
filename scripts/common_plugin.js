@@ -8,6 +8,7 @@
 // @match        https://www.gigab2b.com/*
 // @match        https://xhl.topwms.com/*
 // @match        https://us.goodcang.com/*
+// @match        https://oms.goodcang.com/*
 // @match        https://cnuser.returnhelper.com.hk/*
 // @match        https://cnuser.returnhelper.com/*
 // @match        https://oms.xlwms.com/*

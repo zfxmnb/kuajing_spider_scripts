@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-    console.log('common_plugin_core running', '202506112345')
+    console.log('common_plugin_core running', '202508291416')
     const matchDomains = ['www.gigab2b.com', 'www.saleyee.com', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'returnhelper.com', 'oms.xlwms.com']
     // 一下内容在指定域名下生效
     if (!matchDomains.includes(window.location.host)) {return}
@@ -8,8 +8,9 @@ window.common_plugin_core = async () => {
     const gigab2bCheckout = 'https://www.gigab2b.com/index.php?route=account/sales_order/sales_order_management'
     const topwmsCheckout = 'https://xhl.topwms.com/manual_order/index'
     const goodcangCheckout = 'https://us.goodcang.com/order/add'
+    const goodcangCheckoutV2 = 'https://oms.goodcang.com/order/add'
     const xlwmsCheckout = 'https://oms.xlwms.com/warehouse/packet/create'
-    const checkoutUrls = [saleCheckout, gigab2bCheckout, topwmsCheckout, goodcangCheckout, xlwmsCheckout]
+    const checkoutUrls = [saleCheckout, gigab2bCheckout, topwmsCheckout, goodcangCheckout, goodcangCheckoutV2, xlwmsCheckout]
     const addressConfigs = {
         'United States': {
             value: '1',
@@ -388,7 +389,7 @@ window.common_plugin_core = async () => {
         if (window.location.href.includes(topwmsCheckout)) {
             html+=`<div><a class="topwms_checkout_import">一键导入</a></div>`
         }
-        if (window.location.href.includes(goodcangCheckout)) {
+        if (window.location.href.includes(goodcangCheckout) || window.location.href.includes(goodcangCheckoutV2)) {
             html+=`<div><a class="goodcang_checkout_import">一键导入</a></div>`
         }
         if (window.location.href.includes(xlwmsCheckout)) {
@@ -746,7 +747,7 @@ window.common_plugin_core = async () => {
             data.address_line2 && setInput(document.querySelector('[for="addressTwo"]')?.nextElementSibling?.querySelector('textarea'), data.address_line2)
         }
     })
-    if (window.location.href.includes(goodcangCheckout)) {
+    if (window.location.href.includes(goodcangCheckout) || window.location.href.includes(goodcangCheckoutV2)) {
         const timer = setInterval(async() => {
             gcInitImport(timer)
         }, 1000)
