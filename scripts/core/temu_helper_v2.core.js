@@ -2116,15 +2116,44 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
             setExactInterval(() => {
                 console.log('心跳检查：', new Date().toLocaleString())
             }, 60 * 1000)
+            // 自动调价
+            if (ReductionInterval) {
+                setExactInterval(async () => {
+                    const reduction_date_key = `${Name}__reduction_date__`
+                    const reductionDate = getCache(reduction_date_key)
+                    const todayDate = new Date().toLocaleDateString()
+                    const nextDate = new Date(Date.now() + ReductionInterval).toLocaleDateString()
+                    if (reductionDate != todayDate && nextDate != todayDate) {
+                        await productsReduction(0.01)
+                        setCache(reduction_date_key, todayDate)
+                    }
+                }, ReductionInterval)
+            }
+        }
+    }
+    const sellerInit = async () => {
+        if (!AutoDisabled && window.location.host.includes('agentseller.temu.com')) {
+            const productAutoSyncKey = `${Name}__temu_product_auto_sync_last_time__`
+            setExactInterval(async () => {
+                const now = new Date()
+                console.log('定时同步商品数据', now.toLocaleString())
+                const nowHourStr = now.toLocaleDateString()
+                const prevLasthour = localStorage.getItem(productAutoSyncKey)
+                if (nowHourStr !== prevLasthour) {
+                    await getProductsData()
+                    await productsDataSync()
+                    localStorage.setItem(productAutoSyncKey, todayDate)
+                }
+            }, 24 * 60 * 60 * 1000)
             // 调价监听
-            const productUpdatePollingInterval = 30 * 60 * 1000
-            const productUpdateKey = `${Name}__temu_product_price_update_last_time__`
+            const productPriceUpdatePollingInterval = 30 * 60 * 1000
+            const productPriceUpdateKey = `${Name}__temu_product_price_update_last_time__`
             setExactInterval(async () => {
                 console.log('调价监测：', new Date().toLocaleString())
-                const prevLastTime = Number(localStorage.getItem(productUpdateKey)) || 0
+                const prevLastTime = Number(localStorage.getItem(productPriceUpdateKey)) || 0
                 const now = Date.now()
-                if ((now - prevLastTime) < productUpdatePollingInterval) return
-                localStorage.setItem(productUpdateKey, now)
+                if ((now - prevLastTime) < productPriceUpdatePollingInterval) return
+                localStorage.setItem(productPriceUpdateKey, now)
                 const items = !config.PriceAdjustNotice ? [] : await fetch('/api/kiana/magnus/mms/price-adjust/page-query', {
                     method: 'POST',
                     headers: {
@@ -2193,36 +2222,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                         notice((Name ? `【${Name}】` : '') + '[限流通知]', content)
                     }
                 }
-            }, productUpdatePollingInterval)
-            // 自动调价
-            if (ReductionInterval) {
-                setExactInterval(async () => {
-                    const reduction_date_key = `${Name}__reduction_date__`
-                    const reductionDate = getCache(reduction_date_key)
-                    const todayDate = new Date().toLocaleDateString()
-                    const nextDate = new Date(Date.now() + ReductionInterval).toLocaleDateString()
-                    if (reductionDate != todayDate && nextDate != todayDate) {
-                        await productsReduction(0.01)
-                        setCache(reduction_date_key, todayDate)
-                    }
-                }, ReductionInterval)
-            }
-        }
-    }
-    const sellerInit = async () => {
-        const productAutoSyncKey = `${Name}__temu_product_auto_sync_last_time__`
-        if (!AutoDisabled && window.location.host.includes('agentseller.temu.com')) {
-            setExactInterval(async () => {
-                const now = new Date()
-                console.log('定时同步商品数据', now.toLocaleString())
-                const nowHourStr = now.toLocaleDateString()
-                const prevLasthour = localStorage.getItem(productAutoSyncKey)
-                if (nowHourStr !== prevLasthour) {
-                    await getProductsData()
-                    await productsDataSync()
-                    localStorage.setItem(productAutoSyncKey, todayDate)
-                }
-            }, 24 * 60 * 60 * 1000)
+            }, productPriceUpdatePollingInterval)
         }
     }
     (async () => {
