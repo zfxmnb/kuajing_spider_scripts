@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202507121524')
+    console.log('temu_helper_v2_core running', '202509042352')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -1306,7 +1306,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     if (items['productId']) {
                         html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_stock_remove" data-product="${items['productId']}" data-sku="${sku}">清空库存</a>`
                         html += `</br><a href="javascript:;" class="temu_plugin_sku_extra_stock_add" data-product="${items['productId']}" data-sku="${sku}">补充库存</a>`
-                        html += `</br><a href="javascript:;" class="temu_plugin_sku_extra_subscription" data-product="${items['productId']}" data-sku="${sku}" style="color:${items['subscription'] ? 'red' : 'inherit'}" ${items?.['subscription'] ? 'data-subscription="1"' : ''}>${items?.['subscription'] ? '取消订阅' : '订阅调价'}</a>`
+                        html += `</br><a href="javascript:;" class="temu_plugin_sku_extra_subscription" data-product="${items['productId']}" data-sku="${sku}" style="color:${items['subscription'] ? 'red' : 'inherit'}" ${items?.['subscription'] ? 'data-subscription="1"' : ''}>${items?.['subscription'] ? '取消订阅限制' : '订阅限制'}</a>`
                     }
                 }
                 span.innerHTML = html
@@ -1552,14 +1552,14 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     }
                 }
             }
-            const subscription = ele.closest('.temu_plugin_sku_extra_subscription')
-            if (sku && subscription) {
-                const productId = Number(subscription.dataset?.product)
-                const skuId = Number(subscription.dataset?.sku)
+            const subscriptionEle = ele.closest('.temu_plugin_sku_extra_subscription')
+            if (sku && subscriptionEle) {
+                const productId = Number(subscriptionEle.dataset?.product)
+                const skuId = Number(subscriptionEle.dataset?.sku)
                 if (productId && skuId) {
                     const dataSource = deepClone(currentData)
                     const data = currentDataMap[sku]
-                    const subscription = subscription.dataset?.subscription
+                    const subscription = !!subscriptionEle.dataset?.subscription
                     if (dataSource[data.index]) {
                         dataSource[data.index]['subscription'] = !subscription
                         productsDataPush(dataSource, { params: { force: true, extendKeys: ['subscription'] }, update: true })
@@ -2125,7 +2125,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 const now = Date.now()
                 if ((now - prevLastTime) < productUpdatePollingInterval) return
                 localStorage.setItem(productUpdateKey, now)
-                const items = await fetch('/api/kiana/magnus/mms/price-adjust/page-query', {
+                const items = !config.PriceAdjustNotice ? [] : await fetch('/api/kiana/magnus/mms/price-adjust/page-query', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2144,17 +2144,53 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     }) ?? []
                     return items
                 }).catch(error => console.error("Error fetching data:", error))
-                if (items?.length) await getProductsData();
+                const limitItems = await fetch('/api/kiana/mms/robin/searchForSemiSupplier', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        "mallid": await getMallId(),
+                    },
+                    body: JSON.stringify({"pageSize":50,"pageNum":1,"secondarySelectStatusList":[12],"supplierTodoTypeList":[13]})
+                }).then(response => response.json()).then(({ result = {} } = {}) => {
+                    const { dataList = [] } = result
+                    const items = []
+                    dataList.forEach?.(({ productId, productName: title, skcList = [] } = {}) => {
+                        if (skcList?.length) {
+                            skcList.forEach(({ skuList = [], statusTime = {} } = {}) => {
+                                if (statusTime.priceVerificationTime > prevLastTime) {
+                                    skuList.forEach(({ skuId, siteSupplierPriceList = [] } = {}) => {
+                                        const { supplierPriceValue: price, targetSupplyPrice: newSupplyPrice } = siteSupplierPriceList[0] ?? {}
+                                        items.push({ title, productId, skuId, price, newSupplyPrice })
+                                    })
+                                }
+                            })
+                        }
+                    }) ?? []
+                    return items
+                }).catch(error => console.error("Error fetching data:", error))
+                if (items?.length || limitItems?.length) await getProductsData();
                 if (items?.length) {
                     let content="|  原价  |  调价  |     品名     |\n|--------|--------|--------|"
-                    const list = items.filter(({ productId, skuId }) => currentDataMap?.[skuId]?.subscription)
+                    const list = items.filter(({ skuId }) => currentDataMap?.[skuId]?.subscription)
                     if (list?.length) {
-                        list.forEach(({ title, productId, skuId, price, newSupplyPrice, spec }) => {
+                        list.forEach(({ title, skuId, price, newSupplyPrice, spec }) => {
                             let name = title?.substr?.(0, 16)
                             if (item.title !== title) {title += '..'}
                             content += `\n| ${price} | ${newSupplyPrice} | [「${spec}」${name}](https://agentseller.temu.com/mmsos/orders.html?sku=${skuId})  |`
                         })
                         notice((Name ? `【${Name}】` : '') + '[调价通知]', content)
+                    }
+                }
+                if (limitItems?.length) {
+                    let content="|  原价  |  调价  |     品名     |\n|--------|--------|--------|"
+                    const list = items.filter(({ skuId }) => currentDataMap?.[skuId]?.subscription)
+                    if (list?.length) {
+                        list.forEach(({ title, skuId, price, newSupplyPrice }) => {
+                            let name = title?.substr?.(0, 16)
+                            if (item.title !== title) {title += '..'}
+                            content += `\n| ${price} | ${newSupplyPrice} | [${name}](https://agentseller.temu.com/mmsos/orders.html?sku=${skuId})  |`
+                        })
+                        notice((Name ? `【${Name}】` : '') + '[限流通知]', content)
                     }
                 }
             }, productUpdatePollingInterval)
