@@ -1304,8 +1304,9 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 if(seller) {
                     html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_remove" data-sku="${sku}">移除商品</a><br/>`
                     if (items['productId']) {
-                        html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_stock_remove" data-product="${items['productId']}" data-sku="${sku}">清空库存</a></br>`
-                        html += `<a href="javascript:;" class="temu_plugin_sku_extra_stock_add" data-product="${items['productId']}" data-sku="${sku}">补充库存</a>`
+                        html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_stock_remove" data-product="${items['productId']}" data-sku="${sku}">清空库存</a>`
+                        html += `</br><a href="javascript:;" class="temu_plugin_sku_extra_stock_add" data-product="${items['productId']}" data-sku="${sku}">补充库存</a>`
+                        html += `</br><a href="javascript:;" class="temu_plugin_sku_extra_subscription" data-product="${items['productId']}" data-sku="${sku}" style="color:${items['subscription'] ? 'red' : 'inherit'}" ${items?.['subscription'] ? 'data-subscription="1"' : ''}>${items?.['subscription'] ? '取消订阅' : '订阅调价'}</a>`
                     }
                 }
                 span.innerHTML = html
@@ -1551,6 +1552,20 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     }
                 }
             }
+            const subscription = ele.closest('.temu_plugin_sku_extra_subscription')
+            if (sku && subscription) {
+                const productId = Number(subscription.dataset?.product)
+                const skuId = Number(subscription.dataset?.sku)
+                if (productId && skuId) {
+                    const dataSource = deepClone(currentData)
+                    const data = currentDataMap[sku]
+                    const subscription = subscription.dataset?.subscription
+                    if (dataSource[data.index]) {
+                        dataSource[data.index]['subscription'] = !subscription
+                        productsDataPush(dataSource, { params: { force: true, extendKeys: ['subscription'] }, update: true })
+                    }
+                }
+            }
             if (ele.closest('.temu_plugin_order_tag')) {
                 const id = ele.dataset.id
                 if (currentOrderDataMap[id]) {
@@ -1632,9 +1647,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 }, 10000)
                 
                 fetchInterceptor?.(`${window.location.origin}/mms/eagle/package/online/batch_send`, async (response, url, options) => {
-                    // debugger
                     const result = await response.json()
-                    // console.log('fetchInterceptor response: ', result)
                     if (result.success) {
                         try {
                             let body = null
@@ -1647,7 +1660,6 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                                     body = options?.body
                                 }
                             }
-                            // console.log('fetchInterceptor body: ', body)
                             if (body?.send_request_list?.length === 1 && body?.send_request_list?.[0]?.order_send_info_list?.length === 1) {
                                 const orderId = body?.send_request_list?.[0]?.order_send_info_list?.[0]?.parent_order_sn
                                 if (orderId) {
@@ -2104,6 +2116,48 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
             setExactInterval(() => {
                 console.log('心跳检查：', new Date().toLocaleString())
             }, 60 * 1000)
+            // 调价监听
+            const productUpdatePollingInterval = 30 * 60 * 1000
+            const productUpdateKey = `${Name}__temu_product_price_update_last_time__`
+            setExactInterval(async () => {
+                console.log('调价监测：', new Date().toLocaleString())
+                const prevLastTime = Number(localStorage.getItem(productUpdateKey)) || 0
+                const now = Date.now()
+                if ((now - prevLastTime) < productUpdatePollingInterval) return
+                localStorage.setItem(productUpdateKey, now)
+                const items = await fetch('/api/kiana/magnus/mms/price-adjust/page-query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        "mallid": await getMallId(),
+                    },
+                    body: JSON.stringify({"pageInfo":{"pageSize":50,"pageNo":1},"status":1,"saleForbidOrder":false,"trafficLowExpose":false})
+                }).then(response => response.json()).then(({ result = {} } = {}) => {
+                    const { list = [] } = result
+                    const items = []
+                    list.forEach?.(({ productId, productName: title, newSupplyPrice, skuInfoItemList, orderCreateTime }) => {
+                        if (skuInfoItemList?.length && orderCreateTime > prevLastTime) {
+                            skuInfoItemList.forEach(({ productSkuId: skuId, price, spec } = {}) => {
+                                items.push({ title, productId, skuId, price, newSupplyPrice, spec })
+                            })
+                        }
+                    }) ?? []
+                    return items
+                }).catch(error => console.error("Error fetching data:", error))
+                if (items?.length) await getProductsData();
+                if (items?.length) {
+                    let content="|  原价  |  调价  |     品名     |\n|--------|--------|--------|"
+                    const list = items.filter(({ productId, skuId }) => currentDataMap?.[skuId]?.subscription)
+                    if (list?.length) {
+                        list.forEach(({ title, productId, skuId, price, newSupplyPrice, spec }) => {
+                            let name = title?.substr?.(0, 16)
+                            if (item.title !== title) {title += '..'}
+                            content += `\n| ${price} | ${newSupplyPrice} | [「${spec}」${name}](https://agentseller.temu.com/mmsos/orders.html?sku=${skuId})  |`
+                        })
+                        notice((Name ? `【${Name}】` : '') + '[调价通知]', content)
+                    }
+                }
+            }, productUpdatePollingInterval)
             // 自动调价
             if (ReductionInterval) {
                 setExactInterval(async () => {
