@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202509042352')
+    console.log('temu_helper_v2_core running', '202509072241')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -2148,7 +2148,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
             // 调价监听
             const productPriceUpdatePollingInterval = 30 * 60 * 1000
             const productPriceUpdateKey = `${Name}__temu_product_price_update_last_time__`
-            setExactInterval(async () => {
+            const priceUpdate = async () => {
                 console.log('调价监测：', new Date().toLocaleString())
                 const prevLastTime = Number(localStorage.getItem(productPriceUpdateKey)) || 0
                 const now = Date.now()
@@ -2204,25 +2204,27 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     if (list?.length) {
                         list.forEach(({ title, skuId, price, newSupplyPrice, spec }) => {
                             let name = title?.substr?.(0, 16)
-                            if (item.title !== title) {title += '..'}
-                            content += `\n| ${price} | ${newSupplyPrice} | [「${spec}」${name}](https://agentseller.temu.com/mmsos/orders.html?sku=${skuId})  |`
+                            if (name !== title) {name += '..'}
+                            content += `\n| ¥${numberFixed(price / 100)} | ¥${numberFixed(newSupplyPrice / 100)} | [「${spec}」${name}](https://agentseller.temu.com/mmsos/orders.html?sku=${skuId})  |`
                         })
                         notice((Name ? `【${Name}】` : '') + '[调价通知]', content)
                     }
                 }
                 if (limitItems?.length) {
                     let content="|  原价  |  调价  |     品名     |\n|--------|--------|--------|"
-                    const list = items.filter(({ skuId }) => currentDataMap?.[skuId]?.subscription)
+                    const list = limitItems.filter(({ skuId }) => currentDataMap?.[skuId]?.subscription)
                     if (list?.length) {
                         list.forEach(({ title, skuId, price, newSupplyPrice }) => {
                             let name = title?.substr?.(0, 16)
-                            if (item.title !== title) {title += '..'}
-                            content += `\n| ${price} | ${newSupplyPrice} | [${name}](https://agentseller.temu.com/mmsos/orders.html?sku=${skuId})  |`
+                            if (name !== title) {name += '..'}
+                            content += `\n| ¥${numberFixed(price / 100)} | ¥${numberFixed(newSupplyPrice/ 100)} | [${name}](https://agentseller.temu.com/mmsos/orders.html?sku=${skuId})  |`
                         })
                         notice((Name ? `【${Name}】` : '') + '[限流通知]', content)
                     }
                 }
-            }, productPriceUpdatePollingInterval)
+            }
+            // priceUpdate()
+            setExactInterval(priceUpdate, productPriceUpdatePollingInterval)
         }
     }
     (async () => {
