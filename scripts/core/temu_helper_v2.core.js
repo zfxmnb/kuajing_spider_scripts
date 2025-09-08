@@ -2148,6 +2148,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
             // 调价监听
             const productPriceUpdatePollingInterval = 30 * 60 * 1000
             const productPriceUpdateKey = `${Name}__temu_product_price_update_last_time__`
+            const productLimitLastIdKey = `${Name}__temu_product_limit_last_id__`
             const priceUpdate = async () => {
                 console.log('调价监测：', new Date().toLocaleString())
                 const prevLastTime = Number(localStorage.getItem(productPriceUpdateKey)) || 0
@@ -2173,6 +2174,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     }) ?? []
                     return items
                 }).catch(error => console.error("Error fetching data:", error))
+                const productLimitLastId = Number(localStorage.getItem(productLimitLastIdKey)) || null
                 const limitItems = await fetch('/api/kiana/mms/robin/searchForSemiSupplier', {
                     method: 'POST',
                     headers: {
@@ -2183,14 +2185,18 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 }).then(response => response.json()).then(({ result = {} } = {}) => {
                     const { dataList = [] } = result
                     const items = []
+                    let bk = false
                     dataList.forEach?.(({ productId, productName: title, skcList = [] } = {}) => {
-                        if (skcList?.length) {
-                            skcList.forEach(({ skuList = [], statusTime = {} } = {}) => {
-                                if (statusTime.priceVerificationTime > prevLastTime) {
-                                    skuList.forEach(({ skuId, siteSupplierPriceList = [] } = {}) => {
-                                        const { supplierPriceValue: price, targetSupplyPrice: newSupplyPrice } = siteSupplierPriceList[0] ?? {}
-                                        items.push({ title, productId, skuId, price, newSupplyPrice })
-                                    })
+                        if (skcList?.length && !bk) {
+                            skcList.forEach(({ skuList = [] } = {}) => {
+                                if (!bk) {
+                                    for(var i = 0; i < skuList.length; i++) {
+                                        const { skuId, siteSupplierPriceList = [] } = skuList[i] ?? {}
+                                        if (productLimitLastId && skuId === productLimitLastId) { bk = true; break } else {
+                                            const { supplierPriceValue: price, targetSupplyPrice: newSupplyPrice } = siteSupplierPriceList[0] ?? {}
+                                            items.push({ title, productId, skuId, price, newSupplyPrice })
+                                        }
+                                    }
                                 }
                             })
                         }
@@ -2214,6 +2220,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     let content="|  原价  |  调价  |     品名     |\n|--------|--------|--------|"
                     const list = limitItems.filter(({ skuId }) => currentDataMap?.[skuId]?.subscription)
                     if (list?.length) {
+                        localStorage.setItem(productLimitLastIdKey, list[0].skuId)
                         list.forEach(({ title, skuId, price, newSupplyPrice }) => {
                             let name = title?.substr?.(0, 16)
                             if (name !== title) {name += '..'}
