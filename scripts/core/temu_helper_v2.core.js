@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202509072241')
+    console.log('temu_helper_v2_core running', '202509112158')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -699,8 +699,11 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         return [items, Object.values(dataMap)]
     }
     // 推送商品
+    let productsDataPushLoading = false
     const productsDataPush = (data, extra) => {
-        request({
+        if (productsDataPushLoading) { alert('商品同步中，稍后再试'); return }
+        productsDataPushLoading = true
+        return request({
             url: extra?.update ? `${Origin}/api/temu/products/update` : `${Origin}/api/temu/products/post`,
             method: 'POST',
             data: JSON.stringify({
@@ -729,8 +732,10 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     currentDataTime = lmt
                 }
             }
+            productsDataPushLoading = false
         })
         .catch(error => {
+            productsDataPushLoading = false
             console.error("Error fetching data:", error);
         });
     }
@@ -1306,7 +1311,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     if (items['productId']) {
                         html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_stock_remove" data-product="${items['productId']}" data-sku="${sku}">清空库存</a>`
                         html += `</br><a href="javascript:;" class="temu_plugin_sku_extra_stock_add" data-product="${items['productId']}" data-sku="${sku}">补充库存</a>`
-                        html += `</br><a href="javascript:;" class="temu_plugin_sku_extra_subscription" data-product="${items['productId']}" data-sku="${sku}" style="color:${items['subscription'] ? 'red' : 'inherit'}" ${items?.['subscription'] ? 'data-subscription="1"' : ''}>${items?.['subscription'] ? '取消订阅限制' : '订阅限制'}</a>`
+                        html += `</br><a href="javascript:;" class="temu_plugin_sku_extra_subscription" data-product="${items['productId']}" data-sku="${sku}" style="color:${items['subscription'] ? 'red' : 'inherit'}" ${items?.['subscription'] ? 'data-subscription="1"' : ''}>${items?.['subscription'] ? '取消限流' : '限流通知'}</a>`
                     }
                 }
                 span.innerHTML = html
@@ -2148,12 +2153,13 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
             // 调价监听
             const productPriceUpdatePollingInterval = 30 * 60 * 1000
             const productPriceUpdateKey = `${Name}__temu_product_price_update_last_time__`
-            const productLimitLastIdKey = `${Name}__temu_product_limit_last_id__`
+            const productLimitLastIdKey = `${Name}__temu_product_limit_last_ids__`
             const priceUpdate = async () => {
                 console.log('调价监测：', new Date().toLocaleString())
                 const prevLastTime = Number(localStorage.getItem(productPriceUpdateKey)) || 0
                 const now = Date.now()
                 if ((now - prevLastTime) < productPriceUpdatePollingInterval) return
+                await getProductsData();
                 localStorage.setItem(productPriceUpdateKey, now)
                 const items = !config.PriceAdjustNotice ? [] : await fetch('/api/kiana/magnus/mms/price-adjust/page-query', {
                     method: 'POST',
@@ -2161,38 +2167,45 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                         'Content-Type': 'application/json',
                         "mallid": await getMallId(),
                     },
-                    body: JSON.stringify({"pageInfo":{"pageSize":50,"pageNo":1},"status":1,"saleForbidOrder":false,"trafficLowExpose":false})
+                    body: JSON.stringify({"pageInfo":{"pageSize":100,"pageNo":1},"status":1,"saleForbidOrder":false,"trafficLowExpose":false})
                 }).then(response => response.json()).then(({ result = {} } = {}) => {
                     const { list = [] } = result
                     const items = []
                     list.forEach?.(({ productId, productName: title, newSupplyPrice, skuInfoItemList, orderCreateTime }) => {
                         if (skuInfoItemList?.length && orderCreateTime > prevLastTime) {
                             skuInfoItemList.forEach(({ productSkuId: skuId, price, spec } = {}) => {
-                                items.push({ title, productId, skuId, price, newSupplyPrice, spec })
+                                if (currentDataMap?.[skuId]?.subscription) {
+                                    items.push({ title, productId, skuId, price, newSupplyPrice, spec })
+                                }
                             })
                         }
                     }) ?? []
                     return items
                 }).catch(error => console.error("Error fetching data:", error))
-                const productLimitLastId = Number(localStorage.getItem(productLimitLastIdKey)) || null
+                let productLimitLastIds = localStorage.getItem(productLimitLastIdKey)?.split?.(',') || []
+                const productLimitLastIdMap = {}
+                productLimitLastIds.forEach((id) => {
+                    productLimitLastIdMap[id] = 1
+                })
+                productLimitLastIds = []
                 const limitItems = await fetch('/api/kiana/mms/robin/searchForSemiSupplier', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         "mallid": await getMallId(),
                     },
-                    body: JSON.stringify({"pageSize":50,"pageNum":1,"secondarySelectStatusList":[12],"supplierTodoTypeList":[13]})
+                    body: JSON.stringify({"pageSize":100,"pageNum":1,"secondarySelectStatusList":[12],"supplierTodoTypeList":[13]})
                 }).then(response => response.json()).then(({ result = {} } = {}) => {
                     const { dataList = [] } = result
                     const items = []
-                    let bk = false
                     dataList.forEach?.(({ productId, productName: title, skcList = [] } = {}) => {
-                        if (skcList?.length && !bk) {
+                        if (skcList?.length) {
                             skcList.forEach(({ skuList = [] } = {}) => {
-                                if (!bk) {
-                                    for(var i = 0; i < skuList.length; i++) {
-                                        const { skuId, siteSupplierPriceList = [] } = skuList[i] ?? {}
-                                        if (productLimitLastId && skuId === productLimitLastId) { bk = true; break } else {
+                                for(var i = 0; i < skuList.length; i++) {
+                                    const { skuId, siteSupplierPriceList = [] } = skuList[i] ?? {}
+                                    if (currentDataMap?.[skuId]?.subscription) {
+                                        productLimitLastIds.push(skuId)
+                                        if (!productLimitLastIdMap[skuId]) {
                                             const { supplierPriceValue: price, targetSupplyPrice: newSupplyPrice } = siteSupplierPriceList[0] ?? {}
                                             items.push({ title, productId, skuId, price, newSupplyPrice })
                                         }
@@ -2203,31 +2216,24 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     }) ?? []
                     return items
                 }).catch(error => console.error("Error fetching data:", error))
-                if (items?.length || limitItems?.length) await getProductsData();
                 if (items?.length) {
                     let content="|  原价  |  调价  |     品名     |\n|--------|--------|--------|"
-                    const list = items.filter(({ skuId }) => currentDataMap?.[skuId]?.subscription)
-                    if (list?.length) {
-                        list.forEach(({ title, skuId, price, newSupplyPrice, spec }) => {
-                            let name = title?.substr?.(0, 16)
-                            if (name !== title) {name += '..'}
-                            content += `\n| ¥${numberFixed(price / 100)} | ¥${numberFixed(newSupplyPrice / 100)} | [「${spec}」${name}](https://agentseller.temu.com/mmsos/orders.html?sku=${skuId})  |`
-                        })
-                        notice((Name ? `【${Name}】` : '') + '[调价通知]', content)
-                    }
+                    items.forEach(({ title, skuId, price, newSupplyPrice, spec }) => {
+                        let name = title?.substr?.(0, 16)
+                        if (name !== title) {name += '..'}
+                        content += `\n| ¥${numberFixed(price / 100)} | ¥${numberFixed(newSupplyPrice / 100)} | [「${spec}」${name}](https://agentseller.temu.com/mmsos/orders.html?sku=${skuId})  |`
+                    })
+                    notice((Name ? `【${Name}】` : '') + '[调价通知]', content)
                 }
                 if (limitItems?.length) {
                     let content="|  原价  |  调价  |     品名     |\n|--------|--------|--------|"
-                    const list = limitItems.filter(({ skuId }) => currentDataMap?.[skuId]?.subscription)
-                    if (list?.length) {
-                        localStorage.setItem(productLimitLastIdKey, list[0].skuId)
-                        list.forEach(({ title, skuId, price, newSupplyPrice }) => {
-                            let name = title?.substr?.(0, 16)
-                            if (name !== title) {name += '..'}
-                            content += `\n| ¥${numberFixed(price / 100)} | ¥${numberFixed(newSupplyPrice/ 100)} | [${name}](https://agentseller.temu.com/mmsos/orders.html?sku=${skuId})  |`
-                        })
-                        notice((Name ? `【${Name}】` : '') + '[限流通知]', content)
-                    }
+                    localStorage.setItem(productLimitLastIdKey, productLimitLastIds.join(','))
+                    limitItems.forEach(({ title, skuId, price, newSupplyPrice }) => {
+                        let name = title?.substr?.(0, 16)
+                        if (name !== title) {name += '..'}
+                        content += `\n| ¥${numberFixed(price / 100)} | ¥${numberFixed(newSupplyPrice/ 100)} | [${name}](https://agentseller.temu.com/mmsos/orders.html?sku=${skuId})  |`
+                    })
+                    notice((Name ? `【${Name}】` : '') + '[限流通知]', content)
                 }
             }
             // priceUpdate()
