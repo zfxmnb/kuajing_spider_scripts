@@ -2236,7 +2236,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     notice((Name ? `【${Name}】` : '') + '[限流通知]', content)
                 }
             }
-            priceUpdate()
+            // priceUpdate()
             setExactInterval(priceUpdate, productPriceUpdatePollingInterval)
         }
     }
