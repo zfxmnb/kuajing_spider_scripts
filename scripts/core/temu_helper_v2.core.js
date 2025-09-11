@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202509112158')
+    console.log('temu_helper_v2_core running', '202509112253')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -1311,7 +1311,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     if (items['productId']) {
                         html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_stock_remove" data-product="${items['productId']}" data-sku="${sku}">清空库存</a>`
                         html += `</br><a href="javascript:;" class="temu_plugin_sku_extra_stock_add" data-product="${items['productId']}" data-sku="${sku}">补充库存</a>`
-                        html += `</br><a href="javascript:;" class="temu_plugin_sku_extra_subscription" data-product="${items['productId']}" data-sku="${sku}" style="color:${items['subscription'] ? 'red' : 'inherit'}" ${items?.['subscription'] ? 'data-subscription="1"' : ''}>${items?.['subscription'] ? '取消限流' : '限流通知'}</a>`
+                        html += `</br><a href="javascript:;" class="temu_plugin_sku_extra_subscription" data-product="${items['productId']}" data-sku="${sku}" style="color:${items['subscription'] ? 'red' : 'inherit'}" ${items?.['subscription'] ? 'data-subscription="1"' : ''}>${items?.['subscription'] ? '取消限流通知' : '限流通知'}</a>`
                     }
                 }
                 span.innerHTML = html
