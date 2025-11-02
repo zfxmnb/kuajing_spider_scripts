@@ -477,7 +477,7 @@ window.dianxiaomi_core = async () => {
         const skuWarehouse = document.querySelector('#skuDataInfo .skuWarehouse')
         if (skuWarehouse && !skuWarehouse.querySelector('.ant-select-multiple').querySelector('.ant-select-selection-item')) {
             const skuWarehouseSelector = skuWarehouse.querySelector('.ant-select-multiple .ant-select-selector')
-            skuWarehouseSelector?.dispatchEvent?.(new Event('mousedown'))
+            skuWarehouseSelector?.click()
             await sleep(1500)
             const dropdown = getGlobalEle('.ant-select-dropdown')
             dropdown.querySelector?.('.rc-virtual-list .ant-select-item')?.click?.()
