@@ -367,7 +367,8 @@
         <div class="title">
           <h1>批量[条形码/二维码]生成</h1>
           <div class="sub">
-            支持按数量生成、设置前缀；也支持从 Excel 直接复制粘贴（最多 100 行）批量生成。
+            支持按数量生成、设置前缀；也支持从 Excel 直接复制粘贴（最多 1000 行）批量生成。 支持 URL
+            参数传入前缀：<span class="mono">?prefix=ABC-</span>（存在时不读取本地缓存前缀）。
           </div>
         </div>
       </div>
@@ -378,7 +379,7 @@
           <div class="row">
             <label>
               前缀（可选）
-              <input id="prefix" type="text" placeholder="例如：SL-" maxlength="32" />
+              <input id="prefix" type="text" placeholder="例如：ABC-" maxlength="32" />
             </label>
             <label>
               生成个数
@@ -468,8 +469,9 @@
             <label id="barcodeFormatWrap" style="gap: 6px; margin: 0">
               条形码规范
               <select id="barcodeFormat" style="width: 100%; padding: 8px 10px">
-                <option value="code39">Code 39</option>
                 <option value="code128" selected>Code 128</option>
+                <option value="code39">Code 39</option>
+                <option value="code39_fullascii">Code 39 全ASCII码</option>
                 <option value="itf14">ITF-14</option>
               </select>
             </label>
@@ -1049,6 +1051,80 @@
         '*': 'nwnnwnwnn', // start/stop
       };
 
+      // Code39 Full ASCII encoding map.
+      // Encodes ASCII 0-127 into Code39 basic character sequences.
+      // Reference: Code 39 Full ASCII (a.k.a. Code 39 Extended).
+      const encodeCode39FullAscii = (input) => {
+        const s = String(input ?? '');
+        /** @type {string[]} */
+        const out = [];
+        for (let i = 0; i < s.length; i += 1) {
+          const c = s.charCodeAt(i);
+          // Only ASCII supported for Code39 Full ASCII.
+          if (c > 127) return null;
+
+          const ch = s[i];
+          // Directly encodable characters in basic set.
+          if (
+            (c >= 48 && c <= 57) || // 0-9
+            (c >= 65 && c <= 90) || // A-Z
+            ch === ' ' ||
+            ch === '-' ||
+            ch === '.' ||
+            ch === '$' ||
+            ch === '/' ||
+            ch === '+' ||
+            ch === '%'
+          ) {
+            out.push(ch);
+            continue;
+          }
+
+          // Control chars
+          if (c === 0) out.push('%U');
+          else if (c >= 1 && c <= 26) out.push('$' + String.fromCharCode(64 + c)); // $A-$Z
+          else if (c >= 27 && c <= 31) out.push('%' + String.fromCharCode(65 + (c - 27))); // %A-%E
+          // Punctuation and symbols
+          else if (c === 33) out.push('/A'); // !
+          else if (c === 34) out.push('/B'); // "
+          else if (c === 35) out.push('/C'); // #
+          else if (c === 36) out.push('/D'); // $ (but $ is direct; keep consistent mapping)
+          else if (c === 37) out.push('/E'); // %
+          else if (c === 38) out.push('/F'); // &
+          else if (c === 39) out.push('/G'); // '
+          else if (c === 40) out.push('/H'); // (
+          else if (c === 41) out.push('/I'); // )
+          else if (c === 42) out.push('/J'); // *
+          else if (c === 43) out.push('/K'); // +
+          else if (c === 44) out.push('/L'); // ,
+          else if (c === 45) out.push('-'); // -
+          else if (c === 46) out.push('.'); // .
+          else if (c === 47) out.push('/O'); // /
+          else if (c === 58) out.push('/Z'); // :
+          else if (c === 59) out.push('%F'); // ;
+          else if (c === 60) out.push('%G'); // <
+          else if (c === 61) out.push('%H'); // =
+          else if (c === 62) out.push('%I'); // >
+          else if (c === 63) out.push('%J'); // ?
+          else if (c === 64) out.push('%V'); // @
+          else if (c === 91) out.push('%K'); // [
+          else if (c === 92) out.push('%L'); // \
+          else if (c === 93) out.push('%M'); // ]
+          else if (c === 94) out.push('%N'); // ^
+          else if (c === 95) out.push('%O'); // _
+          else if (c === 96) out.push('%W'); // `
+          // Lowercase letters
+          else if (c >= 97 && c <= 122) out.push('+' + String.fromCharCode(c - 32)); // +A-+Z
+          else if (c === 123) out.push('%P'); // {
+          else if (c === 124) out.push('%Q'); // |
+          else if (c === 125) out.push('%R'); // }
+          else if (c === 126) out.push('%S'); // ~
+          else if (c === 127) out.push('%T'); // DEL
+          else return null;
+        }
+        return out.join('');
+      };
+
       // Code 128 patterns (widths of bars/spaces in modules).
       // Index: code value 0..106. Stop(106) has 7 widths.
       const CODE128_PATTERNS = (() => {
@@ -1229,10 +1305,10 @@
         let segments = [];
         let textToShow = '';
 
-        const toCode39Segments = (input) => {
-          const up = String(input).toUpperCase();
-          if (!isCode39Supported(up)) return null;
-          const encoded = `*${up}*`;
+        const toCode39Segments = (input, options = {}) => {
+          const normalized = options?.preserveCase ? String(input) : String(input).toUpperCase();
+          if (!isCode39Supported(normalized)) return null;
+          const encoded = `*${normalized}*`;
           /** @type {{isBar:boolean,units:number}[]} */
           const seg = [];
           for (let i = 0; i < encoded.length; i += 1) {
@@ -1245,7 +1321,7 @@
             }
             if (i !== encoded.length - 1) seg.push({ isBar: false, units: 1 });
           }
-          return { seg, text: up };
+          return { seg, text: normalized };
         };
 
         const itf14CheckDigit = (digits13) => {
@@ -1359,6 +1435,22 @@
           }
           segments = r.seg;
           textToShow = r.text;
+        } else if (format === 'code39_fullascii') {
+          const encoded = encodeCode39FullAscii(raw);
+          if (!encoded) {
+            // TODO: i18n
+            updateValueCaption(`Code 39 全ASCII码仅支持 ASCII(0-127)：${raw}`);
+            return;
+          }
+          const r = toCode39Segments(encoded, { preserveCase: true });
+          if (!r) {
+            // Should not happen if map is correct, but keep safe.
+            // TODO: i18n
+            updateValueCaption(`Code 39 全ASCII码编码失败：${raw}`);
+            return;
+          }
+          segments = r.seg;
+          textToShow = raw;
         } else {
           const r = toCode39Segments(raw);
           if (!r) {
@@ -1619,6 +1711,8 @@
       }
       // restore cached prefs
       const prefs = loadPrefs();
+      const urlPrefixRaw = new URLSearchParams(window.location.search).get('prefix');
+      const urlPrefix = urlPrefixRaw === null ? null : String(urlPrefixRaw);
       // default type: barcode
       els.imgType.value = 'barcode';
       if (typeof prefs.imgType === 'string' && ['barcode', 'qrcode'].includes(prefs.imgType)) {
@@ -1627,7 +1721,11 @@
       lastImgType = /** @type {'barcode'|'qrcode'} */ (els.imgType.value || 'barcode');
       els.barcodeFormatWrap.style.display = '';
       els.barcodeFormatWrap.style.display = lastImgType === 'barcode' ? '' : 'none';
-      if (typeof prefs.prefix === 'string') els.prefix.value = prefs.prefix;
+      if (urlPrefix !== null) {
+        els.prefix.value = urlPrefix;
+      } else if (typeof prefs.prefix === 'string') {
+        els.prefix.value = prefs.prefix;
+      }
       if (typeof prefs.count === 'number') els.count.value = String(clampInt(prefs.count, 1, 1000));
       if (typeof prefs.pad === 'number') els.pad.value = String(clampInt(prefs.pad, 1, 12));
       if (typeof prefs.barcodeFormat === 'string') els.barcodeFormat.value = prefs.barcodeFormat;
