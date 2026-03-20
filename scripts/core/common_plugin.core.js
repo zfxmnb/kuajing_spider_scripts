@@ -780,7 +780,7 @@ window.common_plugin_core = async () => {
             dataSource && setFile(document.querySelector('[name="files_url1"]'), `${tracking_number}.pdf`, dataSource)
 
             setInput(document.querySelector('[name="contact"]'), data.receipt_name)
-            setInput(document.querySelector('[for="zip"]'), data.post_code)
+            setInput(document.querySelector('[name="zip"]'), data.post_code)
             setInput(document.querySelector('[name="address"]'), data.address_line1)
             setInput(document.querySelector('[name="address2"]'), data.address_line2)
             setInput(document.querySelector('[name="mobile"]'), data.mobile)
