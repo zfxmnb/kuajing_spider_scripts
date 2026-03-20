@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-    console.log('common_plugin_core running', '202603201719')
+    console.log('common_plugin_core running', '202603201756')
     const matchDomains = ['www.gigab2b.com', 'www.saleyee.com', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'oms.goodcang.com', 'returnhelper.com', 'oms.xlwms.com', 'www.youyi4pl.com']
     // 一下内容在指定域名下生效
     if (!matchDomains.includes(window.location.host)) {return}
@@ -764,16 +764,16 @@ window.common_plugin_core = async () => {
             await sleep(400);
             const cangkuSelect = document.querySelector('[id="ck_id"]')
             if (cangkuSelect && !cangkuSelect?.value) {
-                document.querySelector('[data-val="2"][data-text="纽约仓库"]', 1)?.click()
+                document.querySelector('[data-val="2"][data-text="纽约仓库"]')?.click()
             }
             const logisticsChannelSelect = document.querySelector('[id="zdkd"]')
             if (logisticsChannelSelect && !logisticsChannelSelect?.value) {
-                document.querySelector('[data-val="714"][data-text="自提"]', 1)?.click()
+                document.querySelector('[data-val="714"][data-text="自提"]')?.click()
                 await sleep(400);
             }
             const channelSelect = document.querySelector('[id="chqd"]')
             if (channelSelect && !channelSelect?.value) {
-                document.querySelector('[data-val="7"][data-text="TEMU官面-美东仓"], [data-val="3"][data-text="TEMU-美西仓"]', 1)?.click()
+                document.querySelector('[data-val="7"][data-text="TEMU官面-美东仓"], [data-val="3"][data-text="TEMU-美西仓"]')?.click()
             }
             setInput(document.querySelector('[id="deliver_no"]'), data.parent_order_sn)
             tracking_number && setInput(document.querySelector('[id="waybill"]'), tracking_number)
