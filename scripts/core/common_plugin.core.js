@@ -513,7 +513,7 @@ window.common_plugin_core = async () => {
     const loadedFn = () => {
         setTimeout(() => fn(true), 1000)
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
+            if (document.visibilityState === 'visible' && (!window.location.href.includes(youyiCheckout) || (new URLSearchParams(window.location.search)).get('act') === 'add')) {
                 setTimeout(() => fn(true), 1000)
             }
         })
