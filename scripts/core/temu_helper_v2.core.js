@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202604050027')
+    console.log('temu_helper_v2_core running', '202604050043')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -1341,7 +1341,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         document.querySelectorAll('.temu_plugin_order_extra, .temu_plugin_order_face_sheet').forEach((ele) => {
             ele.remove()
         })
-        const onlineOrder = window.localStorage.getItem('__online_order__', orderId)
+        const onlineOrder = window.localStorage.getItem('__online_order__')
         const orderEles = findElementsByText('PO-')
         orderEles.filter((ele) => ele?.childNodes?.[0]?.nodeValue?.match?.(/^PO\-[\d]+\-[\d]+/)).forEach((ele) => {
             const parentOrderId = ele?.childNodes?.[0]?.nodeValue
@@ -1647,19 +1647,27 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
             })
             if (window.location.pathname === '/mmsos/online-shipping.html') {
                 let inputEle = document.querySelector('[id="packageList[0].warehouseId"] input')
-                const timer = setInterval(() => {
+                const timer = setInterval(async () => {
                     const oneClickImport = findElementsByText('一键填充')?.[0]
                     if (!oneClickImport) return
                     clearInterval(timer)
                     oneClickImport?.click()
+                    await new Promise((r) => setTimeout(r, 100))
                     const prevWarehouse = window.localStorage.getItem('__prev_warehouse__')
                     inputEle = inputEle || document.querySelector('[id="packageList[0].warehouseId"] input')
                     if (prevWarehouse && inputEle && !inputEle?.value) {
                         inputEle?.click()
-                        setTimeout(() => {
-                            findElementsByText(prevWarehouse).find((e) => e.closest('li[role="option"]'))?.closest('li[role="option"]')?.click?.()
-                            setTimeout(() => inputEle?.click(), 50)
+                        const timer2 = setInterval(() => {
+                            const ele = findElementsByText(prevWarehouse).find((e) => e.closest('li[role="option"]'))?.closest('li[role="option"]')
+                            if (ele) {
+                                clearInterval(timer2)
+                                ele?.click?.()
+                                setTimeout(() => inputEle?.click(), 50)
+                            }
                         }, 500)
+                        setTimeout(() => {
+                           clearInterval(timer2)
+                        }, 5000)
                     } else {
                         inputEle?.click()
                     }
