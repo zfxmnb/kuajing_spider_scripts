@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202604050053')
+    console.log('temu_helper_v2_core running', '202604050059')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -1654,15 +1654,19 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     oneClickImport?.click()
                     await new Promise((r) => setTimeout(r, 1000))
                     const prevWarehouse = window.localStorage.getItem('__prev_warehouse__')
-                    inputEle = inputEle || document.querySelector('[id="packageList[0].warehouseId"] input')
+                    inputEle = document.querySelector('[id="packageList[0].warehouseId"] input')
                     if (prevWarehouse && inputEle && !inputEle?.value) {
                         inputEle?.click()
+                        let retry = 2
                         const timer2 = setInterval(() => {
                             const ele = findElementsByText(prevWarehouse).find((e) => e.closest('li[role="option"]'))?.closest('li[role="option"]')
                             if (ele) {
                                 clearInterval(timer2)
                                 ele?.click?.()
                                 setTimeout(() => inputEle?.click(), 50)
+                            } else if (retry >= 1) {
+                                inputEle?.click()
+                                retry -= 1
                             }
                         }, 500)
                         setTimeout(() => {
@@ -1679,7 +1683,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     const ele = e.target
                     if (ele.closest('li[role="option"]')) {
                         setTimeout(() => {
-                            inputEle = inputEle || document.querySelector('[id="packageList[0].warehouseId"] input')
+                            inputEle = document.querySelector('[id="packageList[0].warehouseId"] input')
                             inputEle?.value && window.localStorage.setItem('__prev_warehouse__', inputEle.value)
                         }, 200)
                     }
