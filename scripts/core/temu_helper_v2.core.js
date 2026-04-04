@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202509112253')
+    console.log('temu_helper_v2_core running', '202604042341')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -1097,8 +1097,9 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     }
     const addressMap = {}
     const getAddrAndPackage = async (text, href) => {
-        const launch = (packagesData) => {
+        const launch = async (packagesData) => {
             const isHttp = !!href && /^#*http/.test(href)
+            await new Promise((r) => setTimeout(r, 200))
             if (confirm(`地址复制完成${packagesData?.length ? '[含面单]': '[不含面单]'}！${isHttp ? '是否跳转去下单': ''}`) && isHttp) {
                 let url = window.open(href.replace(/^#+/, ''))
                 if (url.includes("https://xhl.topwms.com/warehouse/stock_list")) {
@@ -1340,6 +1341,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         document.querySelectorAll('.temu_plugin_order_extra, .temu_plugin_order_face_sheet').forEach((ele) => {
             ele.remove()
         })
+        const onlineOrder = window.localStorage.getItem('__online_order__', orderId)
         const orderEles = findElementsByText('PO-')
         orderEles.filter((ele) => ele?.childNodes?.[0]?.nodeValue?.match?.(/^PO\-[\d]+\-[\d]+/)).forEach((ele) => {
             const parentOrderId = ele?.childNodes?.[0]?.nodeValue
@@ -1349,6 +1351,10 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 span.dataset.order = parentOrderId
                 span.innerHTML = `<a data-order="${parentOrderId}" href="javascript:;">面单</a>`
                 ele.appendChild(span)
+                if (onlineOrder === parentOrderId) {
+                    const span = findElementsByText('卖家发货（在线下单）', ele.closest('tr'))?.[0]
+                    if (span) { span.style.color = 'red' }
+                }
             }
             currentOrderData.filter((item) => item.parentOrderId === parentOrderId)?.forEach(({ id, title, price, costPrice, profit, profitMargin, quantity, tag, settled }) => {
                 const span = document.createElement('span')
@@ -1914,6 +1920,13 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     costPrice = numberFixed((info?.costPrice || info?.price || 0) * (order?.quantity || 1))
                     await ordersDataUpdate([{ ...rest, costPrice: costPrice || order.price }])
                 }
+            }
+        })
+        document.body.addEventListener('mousedown', async (e) => {
+            const ele = e.target
+            if (ele.tagName === 'SPAN' && ele.innerText === '在线下单' && ele.closest('a') && ele.closest('td')) {
+                const orderId = ele.closest('tr').querySelector('[data-order]')?.dataset.order
+                orderId && window.localStorage.setItem('__online_order__', orderId)
             }
         })
         function f(items){

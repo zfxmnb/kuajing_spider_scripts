@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-    console.log('common_plugin_core running', '202603201756')
+    console.log('common_plugin_core running', '202604042341')
     const matchDomains = ['www.gigab2b.com', 'www.saleyee.com', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'oms.goodcang.com', 'returnhelper.com', 'oms.xlwms.com', 'www.youyi4pl.com']
     // 一下内容在指定域名下生效
     if (!matchDomains.includes(window.location.host)) {return}
@@ -356,9 +356,9 @@ window.common_plugin_core = async () => {
             }
         }
         if (document.readyState !== 'loading') {
-            setTimeout(fn, 2500)
+            setTimeout(fn, 1500)
         } else {
-            document.addEventListener('DOMContentLoaded', () => setTimeout(fn, 2000))
+            document.addEventListener('DOMContentLoaded', () => setTimeout(fn, 1500))
         }
     }
 
