@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202604042341')
+    console.log('temu_helper_v2_core running', '202604050027')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -1646,16 +1646,36 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 }
             })
             if (window.location.pathname === '/mmsos/online-shipping.html') {
+                let inputEle = document.querySelector('[id="packageList[0].warehouseId"] input')
                 const timer = setInterval(() => {
                     const oneClickImport = findElementsByText('一键填充')?.[0]
                     if (!oneClickImport) return
                     clearInterval(timer)
                     oneClickImport?.click()
-                    document.querySelector('[id="packageList[0].warehouseId"] input')?.click()
+                    const prevWarehouse = window.localStorage.getItem('__prev_warehouse__')
+                    inputEle = inputEle || document.querySelector('[id="packageList[0].warehouseId"] input')
+                    if (prevWarehouse && inputEle && !inputEle?.value) {
+                        inputEle?.click()
+                        setTimeout(() => {
+                            findElementsByText(prevWarehouse).find((e) => e.closest('li[role="option"]'))?.closest('li[role="option"]')?.click?.()
+                            setTimeout(() => inputEle?.click(), 50)
+                        }, 500)
+                    } else {
+                        inputEle?.click()
+                    }
                 }, 1000)
                 setTimeout(() => {
                     clearInterval(timer)
                 }, 10000)
+                document.body.addEventListener('click', (e) => {
+                    const ele = e.target
+                    if (ele.closest('li[role="option"]')) {
+                        setTimeout(() => {
+                            inputEle = inputEle || document.querySelector('[id="packageList[0].warehouseId"] input')
+                            inputEle?.value && window.localStorage.setItem('__prev_warehouse__', inputEle.value)
+                        }, 200)
+                    }
+                })
                 
                 fetchInterceptor?.(`${window.location.origin}/mms/eagle/package/online/batch_send`, async (response, url, options) => {
                     const result = await response.json()
