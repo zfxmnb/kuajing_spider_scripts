@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202604050043')
+    console.log('temu_helper_v2_core running', '202604050053')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -1652,7 +1652,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     if (!oneClickImport) return
                     clearInterval(timer)
                     oneClickImport?.click()
-                    await new Promise((r) => setTimeout(r, 100))
+                    await new Promise((r) => setTimeout(r, 1000))
                     const prevWarehouse = window.localStorage.getItem('__prev_warehouse__')
                     inputEle = inputEle || document.querySelector('[id="packageList[0].warehouseId"] input')
                     if (prevWarehouse && inputEle && !inputEle?.value) {
