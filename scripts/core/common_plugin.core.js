@@ -334,6 +334,33 @@ window.common_plugin_core = async () => {
             subtree: true
         });
     }
+    if (window.location.href.includes('http://www.youyi4pl.com/deliver.php?act=add')) {
+        const fn = async () => {
+            const countryInput = document.querySelector('[id="ajax_country"]')
+            if (countryInput && !countryInput?.value) {
+                get_country_list();
+                await sleep(400);
+                const countryOptioin = document.querySelector('.select_country[user_id="美国"],.select_country[user_id="USA"]')
+                countryOptioin?.click()
+            }
+            await sleep(400);
+            const cangkuSelect = document.querySelector('[id="ck_id"]')
+            if (cangkuSelect) {
+                const prevCk = window.localStorage.getItem('__prev_ck__')
+                !cangkuSelect?.value && prevCk && document.querySelector('.ms-select-item[data-text="请选择发货仓库"]')?.parentElement?.querySelector(`[data-val="${prevCk}"]`)?.click()
+                const changeEvent = cangkuSelect.onchange
+                cangkuSelect.onchange = function(e, ...rest) {
+                    e.target.value && window.localStorage.setItem('__prev_ck__', e.target.value)
+                    changeEvent?.call(this, e, ...rest)
+                }
+            }
+        }
+        if (document.readyState !== 'loading') {
+            setTimeout(fn, 2500)
+        } else {
+            document.addEventListener('DOMContentLoaded', () => setTimeout(fn, 2000))
+        }
+    }
 
     const getData = async () => {
         const content = await getClipboardContent()
@@ -357,7 +384,7 @@ window.common_plugin_core = async () => {
     let hasData = false
      const handle = async () => {
         const data = await getData()
-        if (!data) {return}
+        if (!data) return
         hasData = true
         app.classList.remove('hide')
         app.dataSource = data
@@ -753,7 +780,7 @@ window.common_plugin_core = async () => {
         // 优一
         if (e.target.closest('.youyi_checkout_import')) {
             const data = app.dataSource
-            const {tracking_number, ship_company_name, ship_logistics_type, dataSource, shipping_label_url} = data?.packagesData?.[0] ?? {}
+            const { tracking_number, dataSource } = data?.packagesData?.[0] ?? {}
             const countryInput = document.querySelector('[id="ajax_country"]')
             if (countryInput && !countryInput?.value) {
                 get_country_list();
@@ -764,7 +791,8 @@ window.common_plugin_core = async () => {
             await sleep(400);
             const cangkuSelect = document.querySelector('[id="ck_id"]')
             if (cangkuSelect && !cangkuSelect?.value) {
-                document.querySelector('[data-val="2"][data-text="纽约仓库"]')?.click()
+                const prevCk = window.localStorage.getItem('__prev_ck__') || 2
+                prevCk && document.querySelector('.ms-select-item[data-text="请选择发货仓库"]')?.parentElement?.querySelector(`[data-val="${prevCk}"]`)?.click()
             }
             const logisticsChannelSelect = document.querySelector('[id="zdkd"]')
             if (logisticsChannelSelect && !logisticsChannelSelect?.value) {
