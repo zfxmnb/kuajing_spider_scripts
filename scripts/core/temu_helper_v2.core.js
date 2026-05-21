@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
     if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return
-    console.log('temu_helper_v2_core running', '202507082321')
+    console.log('temu_helper_v2_core running', '202605212237')
     let mallId = window.rawData?.store?.mallid || window.localStorage.getItem('mall-info-id') || window.localStorage.getItem('agentseller-mall-info-id') || window.localStorage.getItem('dxmManualCrawlMallId')
     try {
         mallId = await getMallId()
@@ -12,7 +12,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     const config = ConfigMap?.[mallId] || ConfigMap?.['default']
     const Name = config?.Name || ""  // 本地服务端口
     const Port = config?.Port || 5431  // 本地服务端口
-    const AutoDisabled = config?.AutoDisabled ?? false  // 是否禁用自动同步以及通知
+    const AutoDisabled = config?.AutoDisabled ?? true  // 是否禁用自动同步以及通知
     const Host = config?.Host || '127.0.0.1' // host
     const Origin = `http://${Host}:${Port}`
     const pollingInterval = 15 * 60 * 1000 + Math.round(Math.random() * 15 * 1000) // 轮询代发货订单及平台处理中订单
@@ -475,7 +475,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         pageItems?.forEach?.(({ parentAfterSalesSn, parentOrderSn, afterSalesItemVOList, createdAt } = {}) => {
             afterSales.push({
                 id: parentAfterSalesSn,
-                orders: afterSalesItemVOList?.map(({ orderSn, orderStatus, productSkuId: sku, goodsName } = {}) => {
+                orders: afterSalesItemVOList?.map(({ orderSn, orderStatus, productSkuId: sku, originalSpecName, originalGoodsName, goodsName } = {}) => {
                     const id = `${orderSn}_${sku}`
                     const quantity = currentOrderDataMap[id]?.quantity || 1
                     const p = currentDataMap[sku]?.price === '#' ? 0 : (currentDataMap[sku]?.price ? numberFixed(currentDataMap[sku]?.price * quantity) : currentOrderDataMap[id]?.price || 0)
@@ -492,7 +492,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                         parentOrderId: parentOrderSn,
                         orderId: orderSn,
                         sku,
-                        title: currentOrderDataMap[id]?.title || goodsName,
+                        title: currentOrderDataMap[id]?.title || `${originalSpecName ? `[${originalSpecName}] ` : ''}${originalGoodsName || goodsName}`,
                         quantity: currentOrderDataMap[id]?.quantity || 1,
                         price,
                         costPrice,
@@ -875,7 +875,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         today.setHours(23, 59, 59, 999);
         pageItems.forEach(({ parentOrderMap, orderList }) => {
             const { parentOrderSn, parentOrderTimeStr } = parentOrderMap
-            orderList.forEach(({ productSkuIdList, orderSn, goodsName, quantity = 1, orderStatus }) => {
+            orderList.forEach(({ productSkuIdList, orderSn, originalSpecName, originalGoodsName, goodsName, quantity = 1, orderStatus }) => {
                 if (!statusList.includes(orderStatus)) return
                 productSkuIdList?.forEach((sku) => {
                     const id = `${orderSn}_${sku}`
@@ -898,7 +898,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                         parentOrderId: parentOrderSn,
                         orderId: orderSn,
                         sku,
-                        title: currentDataMap[sku]?.title || goodsName,
+                        title: currentDataMap[sku]?.title || `${originalSpecName ? `[${originalSpecName}] ` : ''}${originalGoodsName || goodsName}`,
                         quantity,
                         price,
                         costPrice,
@@ -1867,12 +1867,12 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
             let content="|  SKU  | 件 | 库存 | 利润 | 品名 |\n|---------|---|------|------|------|"
             items.forEach((item) => {
                 const sku = item.sku
-                let title = item.title?.substr?.(0, 16)
+                let title = item.title?.substr?.(0, 64)
                 if (item.title !== title) {
                     title += '..'
                 }
                 const quantity = item.quantity
-                content += `\n| [${`${sku}`.replace(/(?<=\d{4})\d+/, '..')}](https://agentseller.temu.com/mmsos/orders.html?sku=${sku}) | ${quantity} | ${currentDataMap[sku]?.stock ?? '-'} | ${item.profit ?? currentOrderDataMap[item.id]?.profit ?? '-'} | [${title}](${item?.link || currentDataMap[sku]?.link || 'https://agentseller.temu.com/mmsos/orders.html'}) |`
+                content += `\n| [${`${sku}`.replace(/(?<=\d{8})\d+/, '..')}](https://agentseller.temu.com/mmsos/orders.html?sku=${sku}) | ${quantity} | ${currentDataMap[sku]?.stock ?? '-'} | ${item.profit ?? currentOrderDataMap[item.id]?.profit ?? '-'} | [${title}](${item?.link || currentDataMap[sku]?.link || 'https://agentseller.temu.com/mmsos/orders.html'}) |`
             })
             return content
         }
@@ -2039,21 +2039,24 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 }
             }
         }
+        setExactInterval(async () => {
+            console.log('检查订单：', new Date().toLocaleString())
+            pollingHandle()
+            pollingTemuRefund()
+        }, pollingInterval)
+        pollingChat();
+        setExactInterval(async () => {
+            console.log('聊天检测：', new Date().toLocaleString())
+            pollingChat()
+        }, chatPollingInterval)
+        setExactInterval(async () => {
+            console.log('每日统计：', new Date().toLocaleString())
+            pollingStatistics()
+        }, 60 * 60 * 1000)
+        setExactInterval(() => {
+            console.log('心跳检查：', new Date().toLocaleString())
+        }, 60 * 1000)
         if (!AutoDisabled) {
-            setExactInterval(async () => {
-                console.log('检查订单：', new Date().toLocaleString())
-                pollingHandle()
-                pollingTemuRefund()
-            }, pollingInterval)
-            pollingChat();
-            setExactInterval(async () => {
-                console.log('聊天检测：', new Date().toLocaleString())
-                pollingChat()
-            }, chatPollingInterval)
-            setExactInterval(async () => {
-                console.log('每日统计：', new Date().toLocaleString())
-                pollingStatistics()
-            }, 60 * 60 * 1000)
             const orderAutoSyncKey = `${Name}__temu_order_auto_sync_last_time__`
             setExactInterval(async () => {
                 const now = new Date()
@@ -2065,9 +2068,6 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     localStorage.setItem(orderAutoSyncKey, nowHourStr)
                 }
             }, 2 * 60 * 60 * 1000)
-            setExactInterval(() => {
-                console.log('心跳检查：', new Date().toLocaleString())
-            }, 60 * 1000)
             // 自动调价
             if (ReductionInterval) {
                 setExactInterval(async () => {
