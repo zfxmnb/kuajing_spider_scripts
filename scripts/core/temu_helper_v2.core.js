@@ -19,8 +19,8 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     const oneDay = 24 * 60 * 60 * 1000
     const checkoutDays = 30
     // const CacheKey = '__temu_products__'
-    const seller = window.location.host.includes('seller.kuajingmaihuo.com')
     const agentSeller = window.location.host.includes('agentseller.temu.com') || window.location.host.includes('agentseller-us.temu.com')
+    const seller = window.location.host.includes('seller.kuajingmaihuo.com') || window.location.host.includes('agentseller.temu.com')
     const orderStatusMap = {
         1: '平台处理中',
         2: '未发货',
@@ -332,7 +332,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         let total = 1
         while (pageItems.length < total) {
             page += 1
-            const result = await fetch('/bg-visage-mms/product/skc/pageQuery', {
+            const result = await fetch('/visage-agent-seller/product/skc/pageQuery', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -347,7 +347,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
             .then(response => response.json())
             .then((data) => {
                 if (!data?.result) {
-                    console.error('/bg-visage-mms/product/skc/pageQuery 接口请求失败', data)
+                    console.error('/visage-agent-seller/product/skc/pageQuery 接口请求失败', data)
                     return Promise.reject(data)
                 }
                 return data?.result
@@ -370,7 +370,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     }
     //preCheckWarehouseInfo
     const preCheckWarehouseInfo = async (productId, skuId, warehouseIds) => {
-        return await fetch('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/preCheckWarehouseInfo', {
+        return await fetch('/darwin-mms/api/kiana/ghost/btg/sales/stock/preCheckWarehouseInfo', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -381,7 +381,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         .then(response => response.json())
         .then((data) => {
             if (!data?.success) {
-                console.error('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/preCheckWarehouseInfo', data)
+                console.error('/darwin-mms/api/kiana/ghost/btg/sales/stock/preCheckWarehouseInfo', data)
                 return Promise.reject(data)
             }
             return data?.result
@@ -389,7 +389,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     }
     //updateMmsBtgProductSalesStock
     const updateMmsBtgProductSalesStock = async (productId, skuId, skuStockChangeList) => {
-        return await fetch('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/updateMmsBtgProductSalesStock', {
+        return await fetch('/darwin-mms/api/kiana/ghost/btg/sales/stock/updateMmsBtgProductSalesStock', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -400,7 +400,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         .then(response => response.json())
         .then((data) => {
             if (!data?.result?.isSuccess) {
-                console.error('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/updateMmsBtgProductSalesStock', data)
+                console.error('/darwin-mms/api/kiana/ghost/btg/sales/stock/updateMmsBtgProductSalesStock', data)
                 return Promise.reject(data)
             }
             return data?.result
@@ -408,7 +408,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     }
     // 获取商品库存数据
     const getTemuSkuStockList = async (productId, skuId) => {
-        return await fetch('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/queryBtgProductStockInfo', {
+        return await fetch('/darwin-mms/api/kiana/ghost/btg/sales/stock/queryBtgProductStockInfo', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -419,7 +419,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         .then(response => response.json())
         .then((data) => {
             if (!data?.result?.productStockList?.length) {
-                console.error('/marvel-mms/cn/api/kiana/starlaod/btg/sales/stock/queryBtgProductStockInfo 接口请求失败', data)
+                console.error('/darwin-mms/api/kiana/ghost/btg/sales/stock/queryBtgProductStockInfo 接口请求失败', data)
                 return Promise.reject(data)
             }
             return data?.result?.productStockList
@@ -699,8 +699,11 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         return [items, Object.values(dataMap)]
     }
     // 推送商品
+    let productsDataPushLoading = false
     const productsDataPush = (data, extra) => {
-        request({
+        if (productsDataPushLoading) { alert('商品同步中，稍后再试'); return }
+        productsDataPushLoading = true
+        return request({
             url: extra?.update ? `${Origin}/api/temu/products/update` : `${Origin}/api/temu/products/post`,
             method: 'POST',
             data: JSON.stringify({
@@ -729,8 +732,10 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     currentDataTime = lmt
                 }
             }
+            productsDataPushLoading = false
         })
         .catch(error => {
+            productsDataPushLoading = false
             console.error("Error fetching data:", error);
         });
     }
@@ -1008,7 +1013,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         let total = 1
         while (pageItems.length < total) {
             pageNum += 1
-            const result = await fetch('/marvel-supplier/api/xmen/select/search', {
+            const result = await fetch('/api/kiana/mms/robin/searchForSemiSupplier', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1079,7 +1084,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 adjustItems
             }
             if (data?.adjustItems?.length) {
-                await fetch('/marvel-mms/cn/api/kiana/gmp/bg/magneto/api/price/priceAdjust/gmpProductBatchAdjustPrice', {
+                await fetch('/api/kiana/magnus/mms/price/priceAdjust/gmpProductBatchAdjustPrice', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1092,8 +1097,9 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     }
     const addressMap = {}
     const getAddrAndPackage = async (text, href) => {
-        const launch = (packagesData) => {
+        const launch = async (packagesData) => {
             const isHttp = !!href && /^#*http/.test(href)
+            await new Promise((r) => setTimeout(r, 200))
             if (confirm(`地址复制完成${packagesData?.length ? '[含面单]': '[不含面单]'}！${isHttp ? '是否跳转去下单': ''}`) && isHttp) {
                 let url = window.open(href.replace(/^#+/, ''))
                 if (url.includes("https://xhl.topwms.com/warehouse/stock_list")) {
@@ -1303,7 +1309,11 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 html += `<a href="javascript:;" class="temu_plugin_sku_extra_link" data-sku="${sku}">修改链接</a>`
                 if(seller) {
                     html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_remove" data-sku="${sku}">移除商品</a><br/>`
-                    html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_stock_remove" data-product="${items['productId']}" data-sku="${sku}">清空库存</a></br>`
+                    if (items['productId']) {
+                        html += `<br/><a href="javascript:;" class="temu_plugin_sku_extra_stock_remove" data-product="${items['productId']}" data-sku="${sku}">清空库存</a>`
+                        html += `</br><a href="javascript:;" class="temu_plugin_sku_extra_stock_add" data-product="${items['productId']}" data-sku="${sku}">补充库存</a>`
+                        html += `</br><a href="javascript:;" class="temu_plugin_sku_extra_subscription" data-product="${items['productId']}" data-sku="${sku}" style="color:${items['subscription'] ? 'red' : 'inherit'}" ${items?.['subscription'] ? 'data-subscription="1"' : ''}>${items?.['subscription'] ? '取消限流通知' : '限流通知'}</a>`
+                    }
                 }
                 span.innerHTML = html
                 ele.appendChild(span)
@@ -1331,6 +1341,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         document.querySelectorAll('.temu_plugin_order_extra, .temu_plugin_order_face_sheet').forEach((ele) => {
             ele.remove()
         })
+        const onlineOrder = window.localStorage.getItem('__online_order__')
         const orderEles = findElementsByText('PO-')
         orderEles.filter((ele) => ele?.childNodes?.[0]?.nodeValue?.match?.(/^PO\-[\d]+\-[\d]+/)).forEach((ele) => {
             const parentOrderId = ele?.childNodes?.[0]?.nodeValue
@@ -1340,6 +1351,10 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 span.dataset.order = parentOrderId
                 span.innerHTML = `<a data-order="${parentOrderId}" href="javascript:;">面单</a>`
                 ele.appendChild(span)
+                if (onlineOrder === parentOrderId) {
+                    const span = findElementsByText('卖家发货（在线下单）', ele.closest('tr'))?.[0]
+                    if (span) { span.style.color = 'red' }
+                }
             }
             currentOrderData.filter((item) => item.parentOrderId === parentOrderId)?.forEach(({ id, title, price, costPrice, profit, profitMargin, quantity, tag, settled }) => {
                 const span = document.createElement('span')
@@ -1485,10 +1500,10 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     productsDataPush(dataSource, { params: { force: true } })
                 }
             }
-            const stockRenove = ele.closest('.temu_plugin_sku_extra_stock_remove')
-            if (sku && stockRenove) {
-                const productId = Number(stockRenove.dataset?.product)
-                const skuId = Number(stockRenove.dataset?.sku)
+            const stockRemove = ele.closest('.temu_plugin_sku_extra_stock_remove')
+            if (sku && stockRemove) {
+                const productId = Number(stockRemove.dataset?.product)
+                const skuId = Number(stockRemove.dataset?.sku)
                 if (productId && skuId && (keyMap['Control'] || confirm('是否清空商品库存'))) {
                     const stockList = await getTemuSkuStockList(productId, skuId)
                     let list = []
@@ -1512,6 +1527,53 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                         }
                     } else {
                         ele.remove()
+                    }
+                }
+            }
+            const stockAdd = ele.closest('.temu_plugin_sku_extra_stock_add')
+            if (sku && stockAdd) {
+                const productId = Number(stockAdd.dataset?.product)
+                const skuId = Number(stockAdd.dataset?.sku)
+                if (productId && skuId) {
+                    const data = currentDataMap[skuId]
+                    let stock = Number(prompt("库存", data?.stock ?? 1))
+                    stock = isNaN(stock) ? 0 : stock
+                    const stockList = await getTemuSkuStockList(productId, skuId)
+                    let list = []
+                    if (stockList?.length && stock) {
+                        const singleStock = Math.ceil(stock / stockList?.length)
+                        stockList?.forEach(({ shippingMode, warehouseStockList }) => {
+                            warehouseStockList?.forEach(({ stockAvailable, warehouseInfo }) => {
+                                if (!stockAvailable && stock > 0) {
+                                    const stockDiff = stock < singleStock ? stock : singleStock
+                                    stock -= singleStock
+                                    list.push({"stockDiff": stockDiff,"currentStockAvailable":stockAvailable,"currentShippingMode":shippingMode,"warehouseId":warehouseInfo.warehouseId})
+                                }
+                            })
+                        })
+                    }
+                    if (list?.length) {
+                        try {
+                            await preCheckWarehouseInfo(productId, skuId, list.map(({warehouseId}) => warehouseId))
+                            const result = await updateMmsBtgProductSalesStock(productId, skuId, list)
+                            if (result?.isSuccess) {
+                                ele.innerText = '追加库存'
+                            }
+                        } catch (err) {}
+                    }
+                }
+            }
+            const subscriptionEle = ele.closest('.temu_plugin_sku_extra_subscription')
+            if (sku && subscriptionEle) {
+                const productId = Number(subscriptionEle.dataset?.product)
+                const skuId = Number(subscriptionEle.dataset?.sku)
+                if (productId && skuId) {
+                    const dataSource = deepClone(currentData)
+                    const data = currentDataMap[sku]
+                    const subscription = !!subscriptionEle.dataset?.subscription
+                    if (dataSource[data.index]) {
+                        dataSource[data.index]['subscription'] = !subscription
+                        productsDataPush(dataSource, { params: { force: true, extendKeys: ['subscription'] }, update: true })
                     }
                 }
             }
@@ -1584,21 +1646,51 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 }
             })
             if (window.location.pathname === '/mmsos/online-shipping.html') {
-                const timer = setInterval(() => {
+                let inputEle = document.querySelector('[id="packageList[0].warehouseId"] input')
+                const timer = setInterval(async () => {
                     const oneClickImport = findElementsByText('一键填充')?.[0]
                     if (!oneClickImport) return
                     clearInterval(timer)
                     oneClickImport?.click()
-                    document.querySelector('[id="packageList[0].warehouseId"] input')?.click()
+                    await new Promise((r) => setTimeout(r, 1000))
+                    const prevWarehouse = window.localStorage.getItem('__prev_warehouse__')
+                    inputEle = document.querySelector('[id="packageList[0].warehouseId"] input')
+                    if (prevWarehouse && inputEle && !inputEle?.value) {
+                        inputEle?.click()
+                        let retry = 2
+                        const timer2 = setInterval(() => {
+                            const ele = findElementsByText(prevWarehouse).find((e) => e.closest('li[role="option"]'))?.closest('li[role="option"]')
+                            if (ele) {
+                                clearInterval(timer2)
+                                ele?.click?.()
+                                setTimeout(() => inputEle?.click(), 50)
+                            } else if (retry >= 1) {
+                                inputEle?.click()
+                                retry -= 1
+                            }
+                        }, 500)
+                        setTimeout(() => {
+                           clearInterval(timer2)
+                        }, 5000)
+                    } else {
+                        inputEle?.click()
+                    }
                 }, 1000)
                 setTimeout(() => {
                     clearInterval(timer)
                 }, 10000)
+                document.body.addEventListener('click', (e) => {
+                    const ele = e.target
+                    if (ele.closest('li[role="option"]')) {
+                        setTimeout(() => {
+                            inputEle = document.querySelector('[id="packageList[0].warehouseId"] input')
+                            inputEle?.value && window.localStorage.setItem('__prev_warehouse__', inputEle.value)
+                        }, 200)
+                    }
+                })
                 
                 fetchInterceptor?.(`${window.location.origin}/mms/eagle/package/online/batch_send`, async (response, url, options) => {
-                    // debugger
                     const result = await response.json()
-                    // console.log('fetchInterceptor response: ', result)
                     if (result.success) {
                         try {
                             let body = null
@@ -1611,7 +1703,6 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                                     body = options?.body
                                 }
                             }
-                            // console.log('fetchInterceptor body: ', body)
                             if (body?.send_request_list?.length === 1 && body?.send_request_list?.[0]?.order_send_info_list?.length === 1) {
                                 const orderId = body?.send_request_list?.[0]?.order_send_info_list?.[0]?.parent_order_sn
                                 if (orderId) {
@@ -1863,6 +1954,13 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 }
             }
         })
+        document.body.addEventListener('mousedown', async (e) => {
+            const ele = e.target
+            if (ele.tagName === 'SPAN' && ele.innerText === '在线下单' && ele.closest('a') && ele.closest('td')) {
+                const orderId = ele.closest('tr').querySelector('[data-order]')?.dataset.order
+                orderId && window.localStorage.setItem('__online_order__', orderId)
+            }
+        })
         function f(items){
             let content="|  SKU  | 件 | 库存 | 利润 | 品名 |\n|---------|---|------|------|------|"
             items.forEach((item) => {
@@ -2084,8 +2182,8 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         }
     }
     const sellerInit = async () => {
-        const productAutoSyncKey = `${Name}__temu_product_auto_sync_last_time__`
-        if (!AutoDisabled) {
+        if (!AutoDisabled && window.location.host.includes('agentseller.temu.com')) {
+            const productAutoSyncKey = `${Name}__temu_product_auto_sync_last_time__`
             setExactInterval(async () => {
                 const now = new Date()
                 console.log('定时同步商品数据', now.toLocaleString())
@@ -2097,6 +2195,94 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                     localStorage.setItem(productAutoSyncKey, todayDate)
                 }
             }, 24 * 60 * 60 * 1000)
+            // 调价监听
+            const productPriceUpdatePollingInterval = 30 * 60 * 1000
+            const productPriceUpdateKey = `${Name}__temu_product_price_update_last_time__`
+            const productLimitLastIdKey = `${Name}__temu_product_limit_last_ids__`
+            const priceUpdate = async () => {
+                console.log('调价监测：', new Date().toLocaleString())
+                const prevLastTime = Number(localStorage.getItem(productPriceUpdateKey)) || 0
+                const now = Date.now()
+                if ((now - prevLastTime) < productPriceUpdatePollingInterval) return
+                await getProductsData();
+                localStorage.setItem(productPriceUpdateKey, now)
+                const items = !config.PriceAdjustNotice ? [] : await fetch('/api/kiana/magnus/mms/price-adjust/page-query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        "mallid": await getMallId(),
+                    },
+                    body: JSON.stringify({"pageInfo":{"pageSize":100,"pageNo":1},"status":1,"saleForbidOrder":false,"trafficLowExpose":false})
+                }).then(response => response.json()).then(({ result = {} } = {}) => {
+                    const { list = [] } = result
+                    const items = []
+                    list.forEach?.(({ productId, productName: title, newSupplyPrice, skuInfoItemList, orderCreateTime }) => {
+                        if (skuInfoItemList?.length && orderCreateTime > prevLastTime) {
+                            skuInfoItemList.forEach(({ productSkuId: skuId, price, spec } = {}) => {
+                                if (currentDataMap?.[skuId]?.subscription) {
+                                    items.push({ title, productId, skuId, price, newSupplyPrice, spec })
+                                }
+                            })
+                        }
+                    }) ?? []
+                    return items
+                }).catch(error => console.error("Error fetching data:", error))
+                let productLimitLastIds = localStorage.getItem(productLimitLastIdKey)?.split?.(',') || []
+                const productLimitLastIdMap = {}
+                productLimitLastIds.forEach((id) => {
+                    productLimitLastIdMap[id] = 1
+                })
+                productLimitLastIds = []
+                const limitItems = await fetch('/api/kiana/mms/robin/searchForSemiSupplier', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        "mallid": await getMallId(),
+                    },
+                    body: JSON.stringify({"pageSize":100,"pageNum":1,"secondarySelectStatusList":[12],"supplierTodoTypeList":[13]})
+                }).then(response => response.json()).then(({ result = {} } = {}) => {
+                    const { dataList = [] } = result
+                    const items = []
+                    dataList.forEach?.(({ productId, productName: title, skcList = [] } = {}) => {
+                        if (skcList?.length) {
+                            skcList.forEach(({ skuList = [] } = {}) => {
+                                for(var i = 0; i < skuList.length; i++) {
+                                    const { skuId, siteSupplierPriceList = [] } = skuList[i] ?? {}
+                                    if (currentDataMap?.[skuId]?.subscription) {
+                                        productLimitLastIds.push(skuId)
+                                        if (!productLimitLastIdMap[skuId]) {
+                                            const { supplierPriceValue: price, targetSupplyPrice: newSupplyPrice } = siteSupplierPriceList[0] ?? {}
+                                            items.push({ title, productId, skuId, price, newSupplyPrice })
+                                        }
+                                    }
+                                }
+                            })
+                        }
+                    }) ?? []
+                    return items
+                }).catch(error => console.error("Error fetching data:", error))
+                if (items?.length) {
+                    let content="|  原价  |  调价  |     品名     |\n|--------|--------|--------|"
+                    items.forEach(({ title, skuId, price, newSupplyPrice, spec }) => {
+                        let name = title?.substr?.(0, 16)
+                        if (name !== title) {name += '..'}
+                        content += `\n| ¥${numberFixed(price / 100)} | ¥${numberFixed(newSupplyPrice / 100)} | [「${spec}」${name}](https://agentseller.temu.com/mmsos/orders.html?sku=${skuId})  |`
+                    })
+                    notice((Name ? `【${Name}】` : '') + '[调价通知]', content)
+                }
+                if (limitItems?.length) {
+                    let content="|  原价  |  调价  |     品名     |\n|--------|--------|--------|"
+                    localStorage.setItem(productLimitLastIdKey, productLimitLastIds.join(','))
+                    limitItems.forEach(({ title, skuId, price, newSupplyPrice }) => {
+                        let name = title?.substr?.(0, 16)
+                        if (name !== title) {name += '..'}
+                        content += `\n| ¥${numberFixed(price / 100)} | ¥${numberFixed(newSupplyPrice/ 100)} | [${name}](https://agentseller.temu.com/mmsos/orders.html?sku=${skuId})  |`
+                    })
+                    notice((Name ? `【${Name}】` : '') + '[限流通知]', content)
+                }
+            }
+            // priceUpdate()
+            setExactInterval(priceUpdate, productPriceUpdatePollingInterval)
         }
     }
     (async () => {

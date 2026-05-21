@@ -1,7 +1,7 @@
 let runed = false
 window.dianxiaomi_core = async () => {
     if (runed) true
-    console.log('dianxiaomi_core_v2 running', '202506132133')
+    console.log('dianxiaomi_core_v2 running', '202508291638')
     runed = true
     let imported = false
     function styles(content){
@@ -101,7 +101,7 @@ window.dianxiaomi_core = async () => {
         const originalOpen = XMLHttpRequest.prototype.open;
         const originalSend = XMLHttpRequest.prototype.send;
         XMLHttpRequest.prototype.open = function(method, url) {
-            if (url.includes('/api/popTemuProduct/add.json')) this._is = true;
+            if (url.match(/\/api\/popTemuProduct\/add\w*\.json/)) this._is = true;
             return originalOpen.apply(this, arguments);
         };
         XMLHttpRequest.prototype.send = function (body, ...rest) {
@@ -475,9 +475,9 @@ window.dianxiaomi_core = async () => {
         setInput('#skuDataInfo .skuDataTable [name="skuHeight"]', payload.size?.[2])
         setInput('#skuDataInfo .skuDataTable [name="weight"]', payload.weight)
         const skuWarehouse = document.querySelector('#skuDataInfo .skuWarehouse')
-        if (skuWarehouse && !skuWarehouse.querySelector('.ant-select-show-search').querySelector('.ant-select-selection-item')) {
-            const skuWarehouseSelector = skuWarehouse.querySelector('.ant-select-selector')
-            skuWarehouseSelector?.dispatchEvent?.(new Event('mousedown'))
+        if (skuWarehouse && !skuWarehouse.querySelector('.ant-select-multiple').querySelector('.ant-select-selection-item')) {
+            const skuWarehouseSelector = skuWarehouse.querySelector('.ant-select-multiple .ant-select-selector')
+            skuWarehouseSelector?.click()
             await sleep(1500)
             const dropdown = getGlobalEle('.ant-select-dropdown')
             dropdown.querySelector?.('.rc-virtual-list .ant-select-item')?.click?.()

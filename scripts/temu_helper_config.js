@@ -18,6 +18,7 @@
         "default": {
             Name: "",
             Port: 5431,
+            // PriceAdjustNotice: false
             // AutoDisabled: true
         }
     }

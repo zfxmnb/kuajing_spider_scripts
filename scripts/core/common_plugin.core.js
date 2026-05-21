@@ -1,15 +1,17 @@
 window.common_plugin_core = async () => {
-    console.log('common_plugin_core running', '202506112345')
-    const matchDomains = ['www.gigab2b.com', 'www.saleyee.cn', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'returnhelper.com', 'oms.xlwms.com']
+    console.log('common_plugin_core running', '202604042341')
+    const matchDomains = ['www.gigab2b.com', 'www.saleyee.com', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'oms.goodcang.com', 'returnhelper.com', 'oms.xlwms.com', 'www.youyi4pl.com']
     // 一下内容在指定域名下生效
     if (!matchDomains.includes(window.location.host)) {return}
 
-    const saleCheckout = 'https://www.saleyee.cn/user/order/confirm.html'
+    const saleCheckout = 'https://www.saleyee.com/user/order/confirm.html'
     const gigab2bCheckout = 'https://www.gigab2b.com/index.php?route=account/sales_order/sales_order_management'
     const topwmsCheckout = 'https://xhl.topwms.com/manual_order/index'
     const goodcangCheckout = 'https://us.goodcang.com/order/add'
+    const goodcangCheckoutV2 = 'https://oms.goodcang.com/order/add'
     const xlwmsCheckout = 'https://oms.xlwms.com/warehouse/packet/create'
-    const checkoutUrls = [saleCheckout, gigab2bCheckout, topwmsCheckout, goodcangCheckout, xlwmsCheckout]
+    const youyiCheckout = 'http://www.youyi4pl.com/deliver.php'
+    const checkoutUrls = [saleCheckout, gigab2bCheckout, topwmsCheckout, goodcangCheckout, goodcangCheckoutV2, xlwmsCheckout, youyiCheckout]
     const addressConfigs = {
         'United States': {
             value: '1',
@@ -102,7 +104,7 @@ window.common_plugin_core = async () => {
         const blob = new Blob([byteNumbers], { type: mimeType });
         const file = new File([blob], name || `temp.${mimeType?.split('/').pop()}`, { type: mimeType });
         const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(file); 
+        dataTransfer.items.add(file);
         ele.files = dataTransfer.files;
         ele.dispatchEvent(new Event('change', { bubbles: true }));
     }
@@ -293,7 +295,7 @@ window.common_plugin_core = async () => {
     `)
     const root = html(`<div class="common_plugin hide"></div>`)
     const app = root.querySelector('.common_plugin')
-    if ( window.location.href.includes('xhl.topwms.com')) {
+    if (window.location.href.includes('xhl.topwms.com')) {
         let init = 0
         const observer = new MutationObserver(debounce(() => {
             const skuEleList = findElementsByText('SKU20')
@@ -332,6 +334,33 @@ window.common_plugin_core = async () => {
             subtree: true
         });
     }
+    if (window.location.href.includes('http://www.youyi4pl.com/deliver.php?act=add')) {
+        const fn = async () => {
+            const countryInput = document.querySelector('[id="ajax_country"]')
+            if (countryInput && !countryInput?.value) {
+                get_country_list();
+                await sleep(400);
+                const countryOptioin = document.querySelector('.select_country[user_id="美国"],.select_country[user_id="USA"]')
+                countryOptioin?.click()
+            }
+            await sleep(400);
+            const cangkuSelect = document.querySelector('[id="ck_id"]')
+            if (cangkuSelect) {
+                const prevCk = window.localStorage.getItem('__prev_ck__')
+                !cangkuSelect?.value && prevCk && document.querySelector('.ms-select-item[data-text="请选择发货仓库"]')?.parentElement?.querySelector(`[data-val="${prevCk}"]`)?.click()
+                const changeEvent = cangkuSelect.onchange
+                cangkuSelect.onchange = function(e, ...rest) {
+                    e.target.value && window.localStorage.setItem('__prev_ck__', e.target.value)
+                    changeEvent?.call(this, e, ...rest)
+                }
+            }
+        }
+        if (document.readyState !== 'loading') {
+            setTimeout(fn, 1500)
+        } else {
+            document.addEventListener('DOMContentLoaded', () => setTimeout(fn, 1500))
+        }
+    }
 
     const getData = async () => {
         const content = await getClipboardContent()
@@ -355,7 +384,7 @@ window.common_plugin_core = async () => {
     let hasData = false
      const handle = async () => {
         const data = await getData()
-        if (!data) {return}
+        if (!data) return
         hasData = true
         app.classList.remove('hide')
         app.dataSource = data
@@ -388,11 +417,14 @@ window.common_plugin_core = async () => {
         if (window.location.href.includes(topwmsCheckout)) {
             html+=`<div><a class="topwms_checkout_import">一键导入</a></div>`
         }
-        if (window.location.href.includes(goodcangCheckout)) {
+        if (window.location.href.includes(goodcangCheckout) || window.location.href.includes(goodcangCheckoutV2)) {
             html+=`<div><a class="goodcang_checkout_import">一键导入</a></div>`
         }
         if (window.location.href.includes(xlwmsCheckout)) {
             html+=`<div><a class="xlwms_checkout_import">一键导入</a></div>`
+        }
+        if (window.location.href.includes(youyiCheckout)) {
+            html+=`<div><a class="youyi_checkout_import">一键导入</a></div>`
         }
         app.innerHTML = html
         setTimeout(async () => {
@@ -412,7 +444,7 @@ window.common_plugin_core = async () => {
                     const hasData = !!document.querySelector(`.pick_up_table tbody tr [name="TrackingNo"]`)?.value
                     if (!hasData) {
                         let currentLen = document.querySelectorAll(`.pick_up_table tbody tr`)?.length || 0
-                        for(var i = currentLen; i < data?.packagesData?.length; i++) {
+                        for(var j = currentLen; j < data?.packagesData?.length; j++) {
                             document.querySelector('.add_pick_up')?.click?.()
                         }
                         await sleep(100)
@@ -508,9 +540,9 @@ window.common_plugin_core = async () => {
     const loadedFn = () => {
         setTimeout(() => fn(true), 1000)
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
+            if (document.visibilityState === 'visible' && (!window.location.href.includes(youyiCheckout) || (new URLSearchParams(window.location.search)).get('act') === 'add')) {
                 setTimeout(() => fn(true), 1000)
-            } 
+            }
         })
     }
     if (document.readyState === 'complete') {
@@ -601,15 +633,15 @@ window.common_plugin_core = async () => {
                 document.querySelector('[label="国家/地区"] .ant-select-selection__rendered')?.click()
                 await sleep(400)
                 findElementsByText('US[美国]')?.[0]?.click?.()
-                
+
                 const regionName2Ele = ca.querySelector('[data-sign="address.state"]')?.querySelector('input')
                 regionName2Ele.value = data?.region_name2 || ''
                 regionName2Ele.dispatchEvent(inputEvent)
-                
+
                 const regionName3Ele = ca.querySelector('[data-sign="address.city"]')?.querySelector('input')
                 regionName3Ele.value = data?.region_name3 || ''
                 regionName3Ele.dispatchEvent(inputEvent)
-                
+
                 const postCodeEle = ca.querySelector('[data-sign="address.post_code"]')?.querySelector('input')
                 postCodeEle.value = data?.post_code || ''
                 postCodeEle.dispatchEvent(inputEvent)
@@ -655,7 +687,7 @@ window.common_plugin_core = async () => {
                     }
                 }
                 let logKey = selfMap[ship_company_name]?.[ship_logistics_type]
-                isSelf = !!logKey
+                const isSelf = !!logKey
                 if (!isSelf) {
                     logKey = noSelfMap[ship_company_name]?.[ship_logistics_type]
                 }
@@ -745,8 +777,50 @@ window.common_plugin_core = async () => {
             setInput(document.querySelector('[for="addressOne"]')?.nextElementSibling?.querySelector('textarea'), data.address_line1)
             data.address_line2 && setInput(document.querySelector('[for="addressTwo"]')?.nextElementSibling?.querySelector('textarea'), data.address_line2)
         }
+        // 优一
+        if (e.target.closest('.youyi_checkout_import')) {
+            const data = app.dataSource
+            const { tracking_number, dataSource } = data?.packagesData?.[0] ?? {}
+            const countryInput = document.querySelector('[id="ajax_country"]')
+            if (countryInput && !countryInput?.value) {
+                get_country_list();
+                await sleep(400);
+                const countryOptioin = document.querySelector('.select_country[user_id="美国"],.select_country[user_id="USA"]')
+                countryOptioin?.click()
+            }
+            await sleep(400);
+            const cangkuSelect = document.querySelector('[id="ck_id"]')
+            if (cangkuSelect && !cangkuSelect?.value) {
+                const prevCk = window.localStorage.getItem('__prev_ck__') || 2
+                prevCk && document.querySelector('.ms-select-item[data-text="请选择发货仓库"]')?.parentElement?.querySelector(`[data-val="${prevCk}"]`)?.click()
+            }
+            const logisticsChannelSelect = document.querySelector('[id="zdkd"]')
+            if (logisticsChannelSelect && !logisticsChannelSelect?.value) {
+                document.querySelector('[data-val="714"][data-text="自提"]')?.click()
+                await sleep(400);
+            }
+            const channelSelect = document.querySelector('[id="chqd"]')
+            if (channelSelect && !channelSelect?.value) {
+                document.querySelector('[data-val="7"][data-text="TEMU官面-美东仓"], [data-val="3"][data-text="TEMU-美西仓"]')?.click()
+            }
+            setInput(document.querySelector('[id="deliver_no"]'), data.parent_order_sn)
+            tracking_number && setInput(document.querySelector('[id="waybill"]'), tracking_number)
+            dataSource && setFile(document.querySelector('[name="files_url1"]'), `${tracking_number}.pdf`, dataSource)
+
+            setInput(document.querySelector('[name="contact"]'), data.receipt_name)
+            setInput(document.querySelector('[name="zip"]'), data.post_code)
+            setInput(document.querySelector('[name="address"]'), data.address_line1)
+            setInput(document.querySelector('[name="address2"]'), data.address_line2)
+            setInput(document.querySelector('[name="mobile"]'), data.mobile)
+            setInput(document.querySelector('[name="district"]'), data.region_name3)
+            get_city_list()
+            await sleep(400)
+            const provinceInput = document.querySelector('.ajax_xiala5')
+            provinceInput && findElementsByText(`(${data.region_name2})`, provinceInput)?.[0]?.click()
+            add_products(0)
+        }
     })
-    if (window.location.href.includes(goodcangCheckout)) {
+    if (window.location.href.includes(goodcangCheckout) || window.location.href.includes(goodcangCheckoutV2)) {
         const timer = setInterval(async() => {
             gcInitImport(timer)
         }, 1000)

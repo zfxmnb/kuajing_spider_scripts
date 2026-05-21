@@ -4,7 +4,7 @@
 // @version      2024-06-15
 // @description  try to take over the world!
 // @author       You
-// @match        https://www.saleyee.cn/item/*
+// @match        https://www.saleyee.com/item/*
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
 // @grant        GM_xmlhttpRequest
 // @require      https://ghfast.top/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/dianxiaomi_saleyee_parser.core.js

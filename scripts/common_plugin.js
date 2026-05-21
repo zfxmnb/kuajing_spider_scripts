@@ -4,13 +4,15 @@
 // @version      2024-06-15
 // @description  try to take over the world!
 // @author       You
-// @match        https://www.saleyee.cn/*
+// @match        https://www.saleyee.com/*
 // @match        https://www.gigab2b.com/*
 // @match        https://xhl.topwms.com/*
 // @match        https://us.goodcang.com/*
+// @match        https://oms.goodcang.com/*
 // @match        https://cnuser.returnhelper.com.hk/*
 // @match        https://cnuser.returnhelper.com/*
 // @match        https://oms.xlwms.com/*
+// @match        http://www.youyi4pl.com/*
 // @grant        GM_xmlhttpRequest
 // @require      https://ghfast.top/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/common_plugin.core.js
 // ==/UserScript==
