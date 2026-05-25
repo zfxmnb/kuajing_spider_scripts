@@ -2038,7 +2038,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
       let content = '|  SKU  | 件 | 库存 | 利润 | 品名 |\n|---------|---|------|------|------|';
       items.forEach((item) => {
         const sku = item.sku;
-        let title = item.title?.substr?.(0, 32);
+        let title = item.title?.substr?.(0, 40);
         if (item.title !== title) {
           title += '..';
         }
