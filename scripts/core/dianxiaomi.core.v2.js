@@ -1,6 +1,6 @@
 let runed = false
 window.dianxiaomi_core = async () => {
-    if (runed) true
+    if (runed) return
     console.log('dianxiaomi_core_v2 running', '202508291638')
     runed = true
     let imported = false
@@ -58,9 +58,9 @@ window.dianxiaomi_core = async () => {
             console.error('Failed to copy text: ', err);
         }
     }
-    const setInput = (selector, value) => {
+    const setInput = (selector, value, force = false) => {
         const ele = selector instanceof Element ? selector : document.querySelector(selector)
-        if (imported && ele?.value) return
+        if (!force && imported && ele?.value) return
         if (ele) {
             ele.value = value
             ele.dispatchEvent?.(new Event('input'))
@@ -235,6 +235,209 @@ window.dianxiaomi_core = async () => {
     let stockRate = Number(window.localStorage?.getItem?.('__stock_rate__') || '1')
     stockRate = isNaN(stockRate) ? 1 : stockRate
     stockRateInput && (stockRateInput.value = stockRate)
+    const shopWarehouseCacheKey = '__shop_warehouse_names__'
+    const getSelectedShopName = () => {
+        const shop = document.querySelector?.('#rc_select_0')
+        const selectedShop = shop?.closest?.('.ant-select-selector')?.querySelector?.('.ant-select-selection-item')
+        return selectedShop?.getAttribute?.('title') || selectedShop?.textContent?.trim?.() || ''
+    }
+    const normalizeWarehouseName = (name) => String(name || '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim()
+    const getSelectedWarehouseNames = (skuWarehouse) => {
+        if (!skuWarehouse) return []
+        const warehouseNames = [...skuWarehouse.querySelectorAll('thead th .required')]
+            .map((item) => normalizeWarehouseName(item.textContent).replace(/库存$/, ''))
+            .filter(Boolean)
+        if (warehouseNames.length) return warehouseNames
+        const selectedText = skuWarehouse.querySelector('.ant-select-multiple [aria-live="polite"]')?.textContent?.trim?.()
+        if (selectedText) {
+            return selectedText.split(',').map(normalizeWarehouseName).filter(Boolean)
+        }
+        return [...skuWarehouse.querySelectorAll('.ant-select-multiple .ant-select-selection-item[title]')]
+            .map((item) => normalizeWarehouseName(item.getAttribute('title') || item.textContent))
+            .filter(Boolean)
+    }
+    const getShopWarehouseCache = () => {
+        try {
+            const cache = JSON.parse(window.localStorage?.getItem?.(shopWarehouseCacheKey) || '{}')
+            return cache && typeof cache === 'object' && !Array.isArray(cache) ? cache : {}
+        } catch (err) {
+            return {}
+        }
+    }
+    const saveShopWarehouses = (shopName, warehouseNames) => {
+        if (!shopName || !warehouseNames?.length) return
+        const cache = getShopWarehouseCache()
+        cache[shopName] = [...new Set(warehouseNames)]
+        window.localStorage?.setItem?.(shopWarehouseCacheKey, JSON.stringify(cache))
+    }
+    const getCachedShopWarehouses = (shopName) => {
+        const warehouseNames = getShopWarehouseCache()?.[shopName]
+        return Array.isArray(warehouseNames) ? warehouseNames.map(normalizeWarehouseName).filter(Boolean) : []
+    }
+    const getWarehouseOptionName = (option) => normalizeWarehouseName(option?.getAttribute?.('title') || option?.querySelector?.('.ant-select-item-option-content')?.textContent || option?.textContent)
+    const isWarehouseOptionSelected = (option) => option?.getAttribute?.('aria-selected') === 'true' || option?.classList?.contains?.('ant-select-item-option-selected')
+    const setSelectSearch = (input, value) => {
+        if (!input) return
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+        if (setter) {
+            setter.call(input, value)
+        } else {
+            input.value = value
+        }
+        input.dispatchEvent?.(new Event('input', { bubbles: true }))
+    }
+    const selectWarehouses = async (skuWarehouse, warehouseNames) => {
+        const warehouseSelector = skuWarehouse?.querySelector?.('.ant-select-multiple .ant-select-selector')
+        const warehouseInput = warehouseSelector?.querySelector?.('input')
+        if (!warehouseSelector) return
+        const openWarehouseDropdown = async () => {
+            let dropdown = getGlobalEle('.ant-select-dropdown')
+            if (dropdown) return dropdown
+            warehouseSelector.click()
+            await polling(() => {
+                dropdown = getGlobalEle('.ant-select-dropdown')
+                return !!dropdown
+            }, 50, 800)
+            return dropdown
+        }
+        const selectFirstWarehouse = async () => {
+            setSelectSearch(warehouseInput, '')
+            let firstOption
+            await openWarehouseDropdown()
+            await polling(() => {
+                const dropdown = getGlobalEle('.ant-select-dropdown')
+                const options = [...(dropdown?.querySelectorAll?.('.rc-virtual-list .ant-select-item') || [])]
+                firstOption = options.find((item) => !item.classList.contains('ant-select-item-option-disabled'))
+                return !!firstOption
+            }, 50, 800)
+            if (!isWarehouseOptionSelected(firstOption)) firstOption?.click?.()
+            await polling(() => {
+                const dropdown = getGlobalEle('.ant-select-dropdown')
+                const option = [...(dropdown?.querySelectorAll?.('.rc-virtual-list .ant-select-item') || [])][0]
+                return isWarehouseOptionSelected(option) || getSelectedWarehouseNames(skuWarehouse).length > 0
+            }, 50, 800)
+        }
+        if (!warehouseNames?.length) {
+            await selectFirstWarehouse()
+        }
+        for (let attempt = 0; attempt < 2; attempt++) {
+            for (const name of warehouseNames || []) {
+                await openWarehouseDropdown()
+                if (!warehouseInput?.readOnly) setSelectSearch(warehouseInput, name)
+                let option
+                await polling(() => {
+                    const dropdown = getGlobalEle('.ant-select-dropdown')
+                    const options = [...(dropdown?.querySelectorAll?.('.rc-virtual-list .ant-select-item') || [])]
+                    option = options.find((item) => getWarehouseOptionName(item) === name)
+                    return !!option
+                }, 50, 800)
+                if (!isWarehouseOptionSelected(option)) option?.click?.()
+                await polling(() => {
+                    const dropdown = getGlobalEle('.ant-select-dropdown')
+                    const currentOption = [...(dropdown?.querySelectorAll?.('.rc-virtual-list .ant-select-item') || [])]
+                        .find((item) => getWarehouseOptionName(item) === name)
+                    return isWarehouseOptionSelected(currentOption) || getSelectedWarehouseNames(skuWarehouse).includes(name)
+                }, 50, 800)
+            }
+        }
+        if (!getSelectedWarehouseNames(skuWarehouse).length) {
+            setSelectSearch(warehouseInput, '')
+            await selectFirstWarehouse()
+        }
+        setSelectSearch(warehouseInput, '')
+        warehouseInput?.dispatchEvent?.(new Event('blur', { bubbles: true }))
+    }
+    const distributeWarehouseStock = (skuWarehouse, stock) => {
+        const stockInputs = [...(skuWarehouse?.querySelectorAll?.('[name="stock"]') || [])]
+        if (!stockInputs.length) return
+        const totalStock = Math.max(0, Math.round(Number(stock) || 0))
+        const averageStock = Math.floor(totalStock / stockInputs.length)
+        const remainder = totalStock % stockInputs.length
+        stockInputs.forEach((input, index) => {
+            setInput(input, averageStock + (index < remainder ? 1 : 0), true)
+        })
+    }
+    const setDefaultWarehouseStock = (skuWarehouse, stock = 20) => {
+        const stockInputs = [...(skuWarehouse?.querySelectorAll?.('[name="stock"]') || [])]
+        stockInputs.forEach((input) => setInput(input, stock, true))
+    }
+    const setupCurrentShopWarehouses = async () => {
+        const skuWarehouse = document.querySelector('#skuDataInfo .skuWarehouse')
+        if (!skuWarehouse) return false
+        const shopName = getSelectedShopName()
+        let warehouseNames = getSelectedWarehouseNames(skuWarehouse)
+        const cachedWarehouseNames = getCachedShopWarehouses(shopName)
+        if (cachedWarehouseNames.length) {
+            await selectWarehouses(skuWarehouse, cachedWarehouseNames)
+            await polling(() => cachedWarehouseNames.every((name) => getSelectedWarehouseNames(skuWarehouse).includes(name)), 50, 1000)
+            warehouseNames = getSelectedWarehouseNames(skuWarehouse)
+        } else if (!warehouseNames.length) {
+            await selectWarehouses(skuWarehouse, [])
+            await polling(() => getSelectedWarehouseNames(skuWarehouse).length, 50, 1000)
+            warehouseNames = getSelectedWarehouseNames(skuWarehouse)
+        }
+        if (!warehouseNames.length) return false
+        const restoredCachedWarehouses = !cachedWarehouseNames.length || cachedWarehouseNames.every((name) => warehouseNames.includes(name))
+        if (restoredCachedWarehouses) saveShopWarehouses(shopName, warehouseNames)
+        await polling(() => skuWarehouse.querySelectorAll('[name="stock"]').length >= warehouseNames.length, 100, 3000)
+        const rawStock = payload?.stock
+        const hasStock = rawStock !== undefined && rawStock !== null && rawStock !== '' && Number.isFinite(Number(rawStock))
+        if (hasStock) {
+            distributeWarehouseStock(skuWarehouse, numberFixed(payload.stock * stockRate, 0))
+        } else {
+            setDefaultWarehouseStock(skuWarehouse)
+        }
+        return true
+    }
+    const warehouseSetupButtonSelector = '[data-dianxiaomi-warehouse-setup]'
+    const insertWarehouseSetupButton = () => {
+        const skuWarehouse = document.querySelector('#skuDataInfo .skuWarehouse')
+        if (!skuWarehouse || skuWarehouse.querySelector(warehouseSetupButtonSelector)) return false
+        const syncButton = [...skuWarehouse.querySelectorAll('span.link')]
+            .find((item) => item.textContent?.trim?.() === '同步')
+        if (!syncButton) return false
+        const setupButton = document.createElement('span')
+        setupButton.className = 'link ml-12'
+        setupButton.setAttribute('role', 'button')
+        setupButton.setAttribute('data-dianxiaomi-warehouse-setup', '')
+        setupButton.textContent = '一键设置'
+        setupButton.addEventListener('click', async () => {
+            if (setupButton.dataset.loading) return
+            setupButton.dataset.loading = 'true'
+            setupButton.textContent = '设置中...'
+            try {
+                await setupCurrentShopWarehouses()
+            } catch (err) {
+                console.error('一键设置仓库失败', err)
+            } finally {
+                delete setupButton.dataset.loading
+                setupButton.textContent = '一键设置'
+            }
+        })
+        syncButton.before(setupButton)
+        return true
+    }
+    ;(async () => {
+        let skuDataInfo
+        await polling(() => {
+            skuDataInfo = document.querySelector('#skuDataInfo')
+            return !!skuDataInfo
+        }, 300, 30000)
+        if (!skuDataInfo) return
+        insertWarehouseSetupButton()
+        new MutationObserver(() => insertWarehouseSetupButton()).observe(skuDataInfo, { childList: true, subtree: true })
+    })()
+    const cacheCurrentShopWarehouses = () => {
+        const skuWarehouse = document.querySelector('#skuDataInfo .skuWarehouse')
+        saveShopWarehouses(getSelectedShopName(), getSelectedWarehouseNames(skuWarehouse))
+    }
+    document.addEventListener('click', (event) => {
+        const button = event.target?.closest?.('button, a, [role="button"], .ant-btn, .btn, .btn-orange')
+        const buttonText = button?.textContent?.replace?.(/\s+/g, '') || ''
+        if (button && /保存|发布/.test(buttonText)) {
+            cacheCurrentShopWarehouses()
+        }
+    }, true)
     const parseItem = (title, content, value, nocopy) => {
         const index=copyMap.length
         copyMap.push(value)
@@ -436,7 +639,7 @@ window.dianxiaomi_core = async () => {
             await sleep(200);
             netImgUrl?.closest?.('.ant-modal-wrap')?.querySelector('.ant-btn-primary')?.click?.()
             await sleep(2500);
-            imageCon.querySelector('.batch-image-selection-bar .ant-checkbox-input')?.click();
+            imageCon.querySelector('.batch-image-selection-bar .ant-checkbox-input:not([checked])')?.click();
             await sleep(200);
             const imageEditButton = imageCon.querySelector('.img-options .action-item:nth-child(2) a')
             imageEditButton?.dispatchEvent?.(new Event('mouseenter'))
@@ -474,17 +677,7 @@ window.dianxiaomi_core = async () => {
         setInput('#skuDataInfo .skuDataTable [name="skuWidth"]', payload.size?.[1])
         setInput('#skuDataInfo .skuDataTable [name="skuHeight"]', payload.size?.[2])
         setInput('#skuDataInfo .skuDataTable [name="weight"]', payload.weight)
-        const skuWarehouse = document.querySelector('#skuDataInfo .skuWarehouse')
-        if (skuWarehouse && !skuWarehouse.querySelector('.ant-select-multiple').querySelector('.ant-select-selection-item')) {
-            const skuWarehouseSelector = skuWarehouse.querySelector('.ant-select-multiple .ant-select-selector')
-            skuWarehouseSelector?.click()
-            await sleep(1500)
-            const dropdown = getGlobalEle('.ant-select-dropdown')
-            dropdown.querySelector?.('.rc-virtual-list .ant-select-item')?.click?.()
-            skuWarehouseSelector.querySelector('input')?.dispatchEvent?.(new Event('blur'))
-            await sleep(200);
-            setInput('#skuDataInfo .skuWarehouse [name="stock"]', numberFixed(payload.stock * stockRate, 0))
-        }
+        await setupCurrentShopWarehouses()
         // 变种图片
         const imgCloseIcon = document.querySelector('#skuDataInfo .skuDataTable .img-close-icon')
         if (!imgCloseIcon) {
