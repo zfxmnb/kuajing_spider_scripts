@@ -236,11 +236,21 @@ window.dianxiaomi_core = async () => {
     stockRate = isNaN(stockRate) ? 1 : stockRate
     stockRateInput && (stockRateInput.value = stockRate)
     const shopWarehouseCacheKey = '__shop_warehouse_names__'
+    const categoryCacheKey = '__previous_category_name__'
     const getSelectedShopName = () => {
         const shop = document.querySelector?.('#rc_select_0')
         const selectedShop = shop?.closest?.('.ant-select-selector')?.querySelector?.('.ant-select-selection-item')
         return selectedShop?.getAttribute?.('title') || selectedShop?.textContent?.trim?.() || ''
     }
+    const getSelectedCategoryName = () => {
+        const selectedCategory = document.querySelector('.category-item .ant-select-selection-item[title]')
+        return selectedCategory?.getAttribute?.('title')?.trim?.() || ''
+    }
+    const cacheCurrentCategory = () => {
+        const categoryName = getSelectedCategoryName()
+        if (categoryName) window.localStorage?.setItem?.(categoryCacheKey, categoryName)
+    }
+    const getCachedCategoryName = () => window.localStorage?.getItem?.(categoryCacheKey)?.trim?.() || ''
     const normalizeWarehouseName = (name) => String(name || '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim()
     const getSelectedWarehouseNames = (skuWarehouse) => {
         if (!skuWarehouse) return []
@@ -432,10 +442,11 @@ window.dianxiaomi_core = async () => {
         saveShopWarehouses(getSelectedShopName(), getSelectedWarehouseNames(skuWarehouse))
     }
     document.addEventListener('click', (event) => {
-        const button = event.target?.closest?.('button, a, [role="button"], .ant-btn, .btn, .btn-orange')
+        const button = event.target?.closest?.('button, a, [role="button"], .ant-btn, .btn, .btn-orange, .ant-dropdown-menu-item[title="立即发布"]')
         const buttonText = button?.textContent?.replace?.(/\s+/g, '') || ''
         if (button && /保存|发布/.test(buttonText)) {
             cacheCurrentShopWarehouses()
+            cacheCurrentCategory()
         }
     }, true)
     const parseItem = (title, content, value, nocopy) => {
@@ -563,18 +574,72 @@ window.dianxiaomi_core = async () => {
         })
         await sleep(3000)
         // 分类选择
-        const category = document.querySelector?.('#rc_select_2');
+        let category
+        await polling(() => {
+            const categoryItem = document.querySelector('.category-item')
+            category = categoryItem?.querySelector('.ant-select input[role="combobox"]') || document.querySelector?.('#rc_select_2')
+            return !!category
+        }, 100, 5000)
         const categorySelector = category?.closest?.('.ant-select-selector')
-        const categoryPlaceholder = categorySelector.querySelector('.ant-select-selection-placeholder')
-        if (categoryPlaceholder) {
-            categorySelector?.dispatchEvent?.(new Event('mousedown'))
+        const categoryPlaceholder = categorySelector?.querySelector('.ant-select-selection-placeholder')
+        const cachedCategoryName = getCachedCategoryName()
+        const selectedCategoryName = getSelectedCategoryName()
+        const shouldSelectCategory = !!category && (!selectedCategoryName || !!cachedCategoryName && selectedCategoryName !== cachedCategoryName)
+        if (shouldSelectCategory) {
+            categorySelector?.dispatchEvent?.(new MouseEvent('mousedown', { bubbles: true }))
         }
         setTimeout(async () => {
-            if (categoryPlaceholder) {
-                const firstCategory = document.querySelector?.(`#rc_select_2_list + div .rc-virtual-list-holder-inner > div[id]`);
-                if (firstCategory) {
-                    firstCategory?.click()
-                } else {
+            if (shouldSelectCategory) {
+                const categoryListId = category?.getAttribute('aria-controls') || category?.getAttribute('aria-owns')
+                let categoryOption
+                let categoryDropdown
+                const getCategoryOptions = () => {
+                    const categoryList = categoryListId ? document.getElementById(categoryListId) : null
+                    categoryDropdown = categoryList?.closest('.ant-select-dropdown') || getGlobalEle('.ant-select-dropdown')
+                    return [...(categoryDropdown?.querySelectorAll?.('.ant-select-item:not(.ant-select-item-option-disabled)') || [])]
+                }
+                const findCategoryOption = async (categoryName) => {
+                    const findVisibleOption = () => getCategoryOptions().find((item) => {
+                        const name = item.getAttribute('title') || item.querySelector('.ant-select-item-option-content')?.textContent?.trim?.() || item.textContent?.trim?.()
+                        return name === categoryName
+                    })
+                    let option = findVisibleOption()
+                    if (option) return option
+                    const holder = categoryDropdown?.querySelector('.rc-virtual-list-holder')
+                    if (!holder) return null
+                    const maxScrollTop = Math.max(0, holder.scrollHeight - holder.clientHeight)
+                    const scrollStep = Math.max(32, holder.clientHeight - 32)
+                    for (let scrollTop = scrollStep; scrollTop < maxScrollTop; scrollTop += scrollStep) {
+                        holder.scrollTop = scrollTop
+                        holder.dispatchEvent(new Event('scroll', { bubbles: true }))
+                        await sleep(50)
+                        option = findVisibleOption()
+                        if (option) return option
+                    }
+                    if (maxScrollTop) {
+                        holder.scrollTop = maxScrollTop
+                        holder.dispatchEvent(new Event('scroll', { bubbles: true }))
+                        await sleep(50)
+                        option = findVisibleOption()
+                    }
+                    return option || null
+                }
+                await polling(() => getCategoryOptions().length, 50, 800)
+                if (cachedCategoryName) {
+                    categoryOption = await findCategoryOption(cachedCategoryName)
+                }
+                if (!categoryOption) {
+                    const holder = categoryDropdown?.querySelector('.rc-virtual-list-holder')
+                    if (holder) {
+                        holder.scrollTop = 0
+                        holder.dispatchEvent(new Event('scroll', { bubbles: true }))
+                        await sleep(50)
+                    }
+                    categoryOption = getCategoryOptions()[0]
+                }
+                if (categoryOption) {
+                    categoryOption.click()
+                } else if (categoryPlaceholder) {
                     category?.closest?.('.ant-select')?.nextElementSibling?.click?.()
                     await sleep(200);
                     const searchCategory = document.querySelector('[name="searchCategory"]')
