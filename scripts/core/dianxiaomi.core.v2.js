@@ -446,12 +446,10 @@ window.dianxiaomi_core = async () => {
                 dropdown.querySelector('.ant-dropdown-menu-item')?.click()
                 imageEditButton?.dispatchEvent?.(new Event('mouseleave'))
                 await sleep(2500)
-                const resizeModal = document.querySelector('.resize-info').closest('.ant-modal-wrap')
-                const valueW = resizeModal?.querySelector('[name="valueW"]')
+                const resizeModal = document.querySelector('.batch-edit-image-modal')?.closest('.ant-modal-wrap')
+                const valueW = resizeModal?.querySelector('.resize-line .ant-input:not([disabled])')
                 if (valueW && !valueW.value) setInput(valueW, '800')
-                const checkbox = resizeModal?.querySelector('.resize-info .right .ant-checkbox-input')
-                if (!checkbox?.checked) checkbox?.click?.()
-                resizeModal?.querySelector('.resize-info .ant-btn-primary')?.click?.()
+                resizeModal?.querySelector('.panel-footer .ant-btn-primary')?.click?.()
                 if (resizeModal) {
                     await polling(() => !judgmentDisplay(resizeModal))
                 }
