@@ -15,9 +15,10 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        unsafeWindow
+// @connect      qyapi.weixin.qq.com
 // @require      https://cdn.bootcdn.net/ajax/libs/xlsx/0.17.0/xlsx.full.min.js
-// @require      https://ghfast.top/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/temu_helper_v2.core.js
-// @require      https://ghfast.top/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/fetchInterceptor.core.js
+// @require      https://gh-proxy.com/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/temu_helper_v2.core.js
+// @require      https://gh-proxy.com/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/fetchInterceptor.core.js
 // ==/UserScript==
 
 // 代理

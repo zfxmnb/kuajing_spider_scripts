@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
   if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return;
-  console.log('temu_helper_v2_core running', '202605221207');
+  console.log('temu_helper_v2_core running', '202608152233');
   let mallId =
     window.rawData?.store?.mallid ||
     window.localStorage.getItem('mall-info-id') ||
@@ -20,6 +20,8 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
   const Port = config?.Port || 5431; // 本地服务端口
   const AutoDisabled = config?.AutoDisabled ?? true; // 是否禁用自动同步以及通知
   const Host = config?.Host || '127.0.0.1'; // host
+  const LocalServiceDisabled = config?.LocalServiceDisabled ?? false; // 是否禁用本地服务
+  const WeComRobotWebhook = config?.WeComRobotWebhook?.trim?.() || ''; // 企业微信机器人 Webhook
   const Origin = `http://${Host}:${Port}`;
   const pollingInterval = 15 * 60 * 1000 + Math.round(Math.random() * 15 * 1000); // 轮询代发货订单及平台处理中订单
   const oneDay = 24 * 60 * 60 * 1000;
@@ -126,6 +128,9 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
 
   // request
   function request(options) {
+    if (LocalServiceDisabled && options.url?.startsWith(`${Origin}/`)) {
+      return Promise.resolve({ status: 204, responseText: JSON.stringify({ code: 1, disabled: true }) });
+    }
     return new Promise((resolve, reject) => {
       GM_xmlhttpRequest({
         timeout: 15000,
@@ -310,15 +315,27 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
   }
   // 通知
   function notice(title, content = '') {
+    const directWeComNotice = !!WeComRobotWebhook;
     return request({
-      url: `${Origin}/api/temu/notice`,
+      url: directWeComNotice ? WeComRobotWebhook : `${Origin}/api/temu/notice`,
       method: 'POST',
-      data: JSON.stringify({ title, content }),
+      data: directWeComNotice
+        ? JSON.stringify({
+            msgtype: 'text',
+            text: {
+              content: [title, content].filter(Boolean).join('\n')
+            }
+          })
+        : JSON.stringify({ title, content }),
       headers: { 'Content-Type': 'application/json' }
     })
-      .then((response) => JSON.parse(response.responseText))
+      .then((response) => {
+        const result = JSON.parse(response.responseText);
+        if (directWeComNotice && result?.errcode) return Promise.reject(result);
+        return result;
+      })
       .catch((error) => {
-        console.error('Error fetching data:', error);
+        console.error(directWeComNotice ? '企业微信机器人通知发送失败:' : 'Error fetching data:', error);
       });
   }
   let logoutRequestCount = 0;

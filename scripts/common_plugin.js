@@ -14,7 +14,7 @@
 // @match        https://oms.xlwms.com/*
 // @match        http://www.youyi4pl.com/*
 // @grant        GM_xmlhttpRequest
-// @require      https://ghfast.top/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/common_plugin.core.js
+// @require      https://gh-proxy.com/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/common_plugin.core.js
 // ==/UserScript==
 
 // 代理
