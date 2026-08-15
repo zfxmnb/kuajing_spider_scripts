@@ -436,6 +436,8 @@ window.dianxiaomi_core = async () => {
             await sleep(200);
             netImgUrl?.closest?.('.ant-modal-wrap')?.querySelector('.ant-btn-primary')?.click?.()
             await sleep(2500);
+            imageCon.querySelector('.batch-image-selection-bar .ant-checkbox-input')?.click();
+            await sleep(200);
             const imageEditButton = imageCon.querySelector('.img-options .action-item:nth-child(2) a')
             imageEditButton?.dispatchEvent?.(new Event('mouseenter'))
             await sleep(200);
