@@ -321,9 +321,9 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
       method: 'POST',
       data: directWeComNotice
         ? JSON.stringify({
-            msgtype: 'text',
-            text: {
-              content: [title, content].filter(Boolean).join('\n')
+            msgtype: 'markdown',
+            markdown: {
+              content: `# ${title}\n${content}`
             }
           })
         : JSON.stringify({ title, content }),
