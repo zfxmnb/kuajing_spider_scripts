@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
   if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return;
-  console.log('temu_helper_v2_core running', '202608152233');
+  console.log('temu_helper_v2_core running', '202608251023');
   let mallId =
     window.rawData?.store?.mallid ||
     window.localStorage.getItem('mall-info-id') ||
