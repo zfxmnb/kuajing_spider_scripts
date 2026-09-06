@@ -7,13 +7,14 @@
 // @match        https://www.dianxiaomi.com/web/popTemu/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=google.com
 // @grant        none
-// @require      https://gh-proxy.com/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/dianxiaomi.core.v2.js
-// @require      https://cdn.bootcdn.net/ajax/libs/jszip/3.10.1/jszip.min.js
+// @require      https://gh-proxy.com/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/dianxiaomi.core.v2.js?=v2
+// @require      https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js
 // ==/UserScript==
 
 // 代理
 // https://gh-proxy.com/$GITHUB_URL
 // https://ghfast.top/$GITHUB_URL
+// https://cdn.bootcdn.net/ajax/libs/jszip/3.10.1/jszip.min.js、https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js
 (async function() {
     dianxiaomi_core();
 })();
