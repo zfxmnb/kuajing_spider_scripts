@@ -13,7 +13,7 @@
 
 (function () {
   'use strict';
-  const DEBUG_MODE = true;
+  const DEBUG_MODE = false;
 
   const TOOLBAR_ID = 'wedoc-batch-delete-toolbar';
   const STYLE_ID = 'wedoc-batch-delete-style';
@@ -27,6 +27,7 @@
   const RETRY_BASE_DELAY_MS = 1000;
   const RISK_CONTROL_PATTERN = /(?:风控|频繁|稍后再试|请求过快|too many|rate limit|risk)/i;
   const NORMAL_RANGE_OPTIONS = [
+    { value: 'before-current-month', label: '本月之前', type: 'before-current-month' },
     { value: 'before-1-month', label: '一个月前', type: 'before-months', months: 1 },
     { value: 'before-2-months', label: '两个月前', type: 'before-months', months: 2 },
     { value: 'before-3-months', label: '三个月前', type: 'before-months', months: 3 },
@@ -153,6 +154,17 @@
 
   function buildTimeRange(option, now = new Date()) {
     const nowTimestamp = Math.floor(now.getTime() / 1000);
+    if (option.type === 'before-current-month') {
+      const startOfCurrentMonth = new Date(now);
+      startOfCurrentMonth.setDate(1);
+      startOfCurrentMonth.setHours(0, 0, 0, 0);
+      const cutoffTimestamp = Math.floor(startOfCurrentMonth.getTime() / 1000);
+      return {
+        label: option.label,
+        description: `早于 ${formatLocalTime(cutoffTimestamp)}`,
+        matches: (timestamp) => timestamp < cutoffTimestamp
+      };
+    }
     if (option.type === 'before-months') {
       const cutoff = subtractCalendarMonths(now, option.months);
       const cutoffTimestamp = Math.floor(cutoff.getTime() / 1000);
