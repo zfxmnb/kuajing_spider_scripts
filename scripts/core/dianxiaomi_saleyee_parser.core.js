@@ -1,5 +1,5 @@
 window.dianxiaomi_saleyee_parser_core = async () => {
-    console.log('dianxiaomi_saleyee_parser_core running', '202506081422')
+    console.log('dianxiaomi_saleyee_parser_core running', '202610122204')
     // const ServiceCharge = 0.15
     const ServiceCharge = 0
     function styles(content){
@@ -43,6 +43,11 @@ window.dianxiaomi_saleyee_parser_core = async () => {
             });
         });
     }
+    async function fetchRate(url) {
+        return request({url, timeout: 2000})
+            .then((response) => JSON.parse(response.responseText))
+            .then((data) => numberFixed(Number(data?.result?.money || data?.info?.rate || 6.75) * (ServiceCharge + 1), 6))
+    }
     async function getRate(fromcoin = 'USD', tocoin = 'CNY') {
         const key = `fxrate_${fromcoin}_${tocoin}`
         const fxrateStr = window.localStorage.getItem(key)
@@ -53,17 +58,28 @@ window.dianxiaomi_saleyee_parser_core = async () => {
             }catch(err){}
         }
         const now = new Date(Date.now() - 5 * 60 * 1000)
-        const current_date = `${now.toLocaleDateString()}_${now.getHours()}`
+        const current_date = `${now.toLocaleDateString()}}`
         if (fxrate && fxrate.rate && current_date === fxrate.date) {
             try {
                 return numberFixed(Number(fxrate.rate) * (ServiceCharge + 1), 6)
             } catch (err) { console.log(err) }
         }
-        let rate = 7.25 * (ServiceCharge + 1)
+        let rate = 6.75 * (ServiceCharge + 1)
         try {
-            rate = await request({url: `http://47.121.133.75:5430/exchange?fromcoin=${fromcoin}&tocoin=${tocoin}&money=1`})
-                .then((response) => JSON.parse(response.responseText))
-                .then((data) => numberFixed(Number(data?.result?.money || 7.25) * (ServiceCharge + 1), 6))
+            await new Promise((resolve) => {
+                let timer = setTimeout(() => {
+                    resolve();
+                }, 6000)
+                fetchRate(`https://currency_rate_api.zfx123.top/v1/convert?from=${fromcoin}&to=${tocoin}&amount=100`).then((r) => {
+                    if (r) {rate = r;resolve();clearTimeout(timer)} else {return Promise.reject()}
+                }).catch(() => {
+                    fetchRate(`http://47.121.133.75:5430/exchange?fromcoin=${fromcoin}&tocoin=${tocoin}&money=1`).then((r) => {
+                        if (r) {rate = r;resolve();clearTimeout(timer)} else {return Promise.reject()}
+                    }).catch(() => {
+                        resolve(); clearTimeout(timer)
+                    })
+                })
+            })
         } catch (err) { console.log(err) }
         window.localStorage.setItem(key, JSON.stringify({rate: rate, date: current_date}))
         return rate
