@@ -201,7 +201,7 @@ window.common_plugin_core = async () => {
             }catch(err){}
         }
         const now = new Date(Date.now() - 5 * 60 * 1000)
-        const current_date = `${now.toLocaleDateString()}_${now.getHours()}`
+        const current_date = `${now.toLocaleDateString()}}`
         if (fxrate && fxrate.rate && current_date === fxrate.date) {
             return numberFixed(Number(fxrate.rate) * (ServiceCharge + 1), 6)
         }
