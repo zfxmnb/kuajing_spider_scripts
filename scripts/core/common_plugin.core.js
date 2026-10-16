@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-    console.log('common_plugin_core running', '202604042341')
+    console.log('common_plugin_core running', '202610162232')
     const matchDomains = ['www.gigab2b.com', 'www.saleyee.com', 'www.temu.com', 'xhl.topwms.com', 'us.goodcang.com', 'oms.goodcang.com', 'returnhelper.com', 'oms.xlwms.com', 'www.youyi4pl.com']
     // 一下内容在指定域名下生效
     if (!matchDomains.includes(window.location.host)) {return}
@@ -205,10 +205,10 @@ window.common_plugin_core = async () => {
         if (fxrate && fxrate.rate && current_date === fxrate.date) {
             return numberFixed(Number(fxrate.rate) * (ServiceCharge + 1), 6)
         }
-        return request({url: `http://47.121.133.75:5430/exchange?fromcoin=${fromcoin}&tocoin=${tocoin}&money=1`})
+        return request({url: `https://currency_rate_api.zfx123.top/v1/convert?from=${fromcoin}&to=${tocoin}&amount=100`})
         .then((response) => JSON.parse(response.responseText))
         .then((data) => {
-            const value = JSON.stringify({rate: Number(data?.result?.money) || 7.25, date: current_date})
+            const value = JSON.stringify({rate: Number(data?.result?.money || data?.info?.rate || 6.75), date: current_date})
             window.localStorage.setItem(key, value)
             return numberFixed(Number(data?.result?.money) * (ServiceCharge + 1), 6)
         })
