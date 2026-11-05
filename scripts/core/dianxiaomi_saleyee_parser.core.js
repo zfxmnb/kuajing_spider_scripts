@@ -1,5 +1,5 @@
 window.dianxiaomi_saleyee_parser_core = async () => {
-    console.log('dianxiaomi_saleyee_parser_core running', '202610122204')
+    console.log('dianxiaomi_saleyee_parser_core running', '202611052359')
     // const ServiceCharge = 0.15
     const ServiceCharge = 0
     function styles(content){
@@ -21,6 +21,17 @@ window.dianxiaomi_saleyee_parser_core = async () => {
     function numberFixed (num, b = 2) {
         return Number(Number(num).toFixed(b)) || 0
     }
+    // 模糊匹配内容元素
+    const findElementsByText = (text, parent = document) => {
+        // 查找包含特定文本的元素节点
+        const matchingNodes = document.evaluate(`.//*[contains(text(), "${text}") and not(self::script)]`, parent, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE);
+        const matchedNodes = [];
+        let node;
+        while ((node = matchingNodes.iterateNext())) {
+        matchedNodes.push(node);
+        }
+        return matchedNodes;
+    };
     // request
     function request(options) {
         return new Promise((resolve, reject) => {
@@ -261,18 +272,18 @@ window.dianxiaomi_saleyee_parser_core = async () => {
             return styles
         },
         package_size: () => {
-            const package_size = []
-            queryAll('.chooseSpec li em').forEach((em, index) => {
-                if (index < 3) {
-                    Number(em.innerText) && package_size.push(Number(em.innerText))
-                } else if (index === 3) {
-                     payload.weight = Number(em.innerText) || 0
-                }
-            })
-            return [...package_size.sort((a, b) => b - a), payload.weight]
+            const tr = findElementsByText('包装尺寸', query('.chooseSpec'))?.[0]?.closest('tr');
+            const sizeTxt = tr.querySelector('td:nth-of-type(2)').innerText || '';
+            const weightTxt = tr.querySelector('td:nth-of-type(3)').innerText || '';
+            let size = [0, 0, 0];
+            const newSize = sizeTxt.split(' × ').map((s) =>  parseInt(s));
+            size[0] = newSize[0] || 0;
+            size[1] = newSize[1] || 0;
+            size[2] = newSize[2] || 0;
+            return [...size, parseInt(weightTxt)]
         },
         size: () => {
-            let size = []
+            let size = [0, 0, 0]
             let getted = false
             if (payload.description?.length) {
                 for (let i = 0; i < payload.description.length; i++ ) {
@@ -291,14 +302,14 @@ window.dianxiaomi_saleyee_parser_core = async () => {
                     }
                 }
             }
-            queryAll('.chooseSpec li em').forEach((em, index) => {
-                if (index < 3) {
-                    !getted && Number(em.innerText) && size.push(Number(em.innerText))
-                } else if (index === 3){
-                    payload.weight = Number(em.innerText) || 0
-                }
-            })
-            return [...size.sort((a, b) => b - a), payload.weight]
+            const tr = findElementsByText('包装尺寸', query('.chooseSpec'))?.[0]?.closest('tr');
+            const sizeTxt = tr.querySelector('td:nth-of-type(2)').innerText || '';
+            const weightTxt = tr.querySelector('td:nth-of-type(3)').innerText || '';
+            const newSize = sizeTxt.split(' × ').map((s) =>  parseInt(s));
+            size[0] = size[0] || newSize[0] || 0;
+            size[1] = size[1] || newSize[1] || 0;
+            size[2] = size[2] || newSize[2] || 0;
+            return [...size, parseInt(weightTxt)]
         },
         colors: () => {
             const cs = []
