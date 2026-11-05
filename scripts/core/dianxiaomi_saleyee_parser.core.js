@@ -14,6 +14,13 @@ window.dianxiaomi_saleyee_parser_core = async () => {
         document.body.appendChild(div)
         return div
     }
+    const setSelect = (selector, value) => {
+        const ele = selector instanceof Element ? selector : document.querySelector(selector)
+        if (ele) {
+            ele.value = value
+            ele.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
     const colorKeywords = ['White', 'Yellow', 'Orange', 'Pink', 'Red', 'Brown', 'Green', 'Blue', 'Purple', 'Gray', 'Grey', 'Black', 'Silver', 'Gold', 'Light brown', 'Light green', 'Light blue', 'Dark brown', 'Dark green', 'Dark blue', 'Bright red', 'Bright green', 'Bright blue'];
     const colorCNKeywords = ['白色', '黄色', '橙色', '粉\w色', '红色', '咖啡色|棕色', '绿色', '蓝色', '紫色', '灰色', '黑色', '银色', '金色', '淡棕|亮棕', '淡绿|亮绿', '淡蓝|亮蓝', '深棕', '深绿', '深蓝', '鲜红|亮红', '鲜绿', '鲜蓝']
     const queryAll = (...args) => document.querySelectorAll(...args)
@@ -443,4 +450,5 @@ window.dianxiaomi_saleyee_parser_core = async () => {
         await collectCb()
         window.open('https://www.dianxiaomi.com/popTemuProduct/add.htm?collection=1')
     })
+    setSelect('select.logisticsselect', '396')
 }
