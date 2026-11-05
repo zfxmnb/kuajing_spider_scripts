@@ -273,21 +273,31 @@ window.common_plugin_core = async () => {
         border: 1px solid #999;
         border-radius: 3px;
         padding: 0 6px;
-        opacity: 0.8;
+        opacity: 0.7;
+        flex-wrap: wrap;
+        line-height: 1;
     }
     .common_plugin div {
         color: #000;
-        font-size: 12px;
-        gap:10px 20px;
+        font-size: 10px !important;
+        gap: 3px 5px;
         padding: 2px 5px;
         border-right: 1px solid;
+        border-bottom: 1px solid;
+    }
+    .common_plugin * {
+        font-size: 10px !important;
+    }
+    .common_plugin a, .common_plugin span {
+        font-size: 10px !important;
+        color: blue;
     }
     .common_plugin div:last-child {
         border-right: none;
     }
     .common_plugin .addr_item_value, .common_plugin .sale_checkout_import, .common_plugin .topwms_checkout_import {
         cursor: pointer;
-        font-size: 12px;
+        font-size: 10px !important;
     }
     .hide {
         display: none;
@@ -354,6 +364,10 @@ window.common_plugin_core = async () => {
                     changeEvent?.call(this, e, ...rest)
                 }
             }
+            await sleep(1000);
+            if (window.location.search?.includes('import=1') || data?.packagesData?.length === 1) {
+                document.querySelector('.youyi_checkout_import')?.click()
+            }
         }
         if (document.readyState !== 'loading') {
             setTimeout(fn, 1500)
@@ -391,7 +405,8 @@ window.common_plugin_core = async () => {
         let html = ''
         if (data?.copy_time) {
             const date = new Date(data?.copy_time)
-            html+=`<div><span class="addr_item_value">${date.toLocaleString().replace(/(^\d{4}\/)|(:\d{1,2}$)/g, '')}</span></div>`
+            const danger = Date.now() - (data?.copy_time ?? 0) >  10 * 1000;
+            html+=`<div><span class="addr_item_value" style="${danger ? 'color:red;': ''}">${date.toLocaleString().replace(/(^\d{4}\/)|(:\d{1,2}$)/g, '')}</span></div>`
         }
         html+=`<div>ID：<span class="addr_item_value">${data?.parent_order_sn}</span></div>`
         html+=`<div>姓名：<span class="addr_item_value">${data?.receipt_name}</span></div>`
@@ -410,6 +425,13 @@ window.common_plugin_core = async () => {
                 html+=`${index ? ', ': '' }<a href="${dataSource ?? shipping_label_url}" download="${tracking_number}">${tracking_number}:${ship_company_name} ${ship_logistics_type}</a>`
             })
             html+="]</div>"
+        }
+        if (data?.products?.length) {
+            html+="<div>"
+            data?.products?.forEach(({ sku, title, quantity }, index) => {
+                html+=`<span title='${title}'><b style="color:red;">x${quantity}</b>&nbsp;${title}</span>&nbsp;&nbsp;`
+            })
+            html+="</div>"
         }
         if (window.location.href.includes(saleCheckout)) {
             html+=`<div><a class="sale_checkout_import">一键导入</a></div>`
@@ -540,7 +562,7 @@ window.common_plugin_core = async () => {
     const loadedFn = () => {
         setTimeout(() => fn(true), 1000)
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && (!window.location.href.includes(youyiCheckout) || (new URLSearchParams(window.location.search)).get('act') === 'add')) {
+            if (document.visibilityState === 'visible' && (!window.location.href.includes('http://www.youyi4pl.com') || (new URLSearchParams(window.location.search)).get('act') === 'add')) {
                 setTimeout(() => fn(true), 1000)
             }
         })
