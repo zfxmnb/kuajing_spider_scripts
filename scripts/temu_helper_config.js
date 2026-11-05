@@ -46,7 +46,7 @@
       // 非空：notice 直接发送到企业微信，不经过本地 /api/temu/notice 代理。
       // 为空：notice 继续使用本地代理；若 LocalServiceDisabled 同时为 true，则通知不会发送。
       // Webhook 包含密钥，请勿将真实地址提交到公开仓库。
-      WeComRobotWebhook: ''
+      WeComRobotWebhook: '',
 
       // 是否开启调价和限流通知。该功能仅在 AutoDisabled 为 false 时运行；默认 false。
       // PriceAdjustNotice: false,

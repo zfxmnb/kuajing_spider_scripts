@@ -1272,7 +1272,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     });
   };
   const addressMap = {};
-  const getAddrAndPackage = async (text, href) => {
+  const getAddrAndPackage = async (text, href, ele) => {
     const launch = async (packagesData) => {
       const isHttp = !!href && /^#*http/.test(href);
       const launchWarehouse = isHttp || !!config.DefaultWarehouse;
@@ -1285,7 +1285,9 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         )
       ) {
         if (config.PlaceAnOrderOnline && !hasShippingLabel) {
-          openIframeModal(`https://agentseller-us.temu.com/mmsos/online-shipping.html?parent_order_sn_list=%5B%22${text}%22%5D&refer_page_name=orders_page`);
+          openIframeModal(`https://agentseller-us.temu.com/mmsos/online-shipping.html?parent_order_sn_list=%5B%22${text}%22%5D&refer_page_name=orders_page`, {
+            onClose: () => document.querySelector('[class^="Grid_filterWrapper"] button[type="submit"]')?.click()
+          });
         } else if (launchWarehouse) {
           if (warehouseUrl.includes('https://xhl.topwms.com/warehouse/stock_list')) {
             warehouseUrl = warehouseUrl.replace('https://xhl.topwms.com/warehouse/stock_list', 'https://xhl.topwms.com/manual_order/index');
@@ -1549,9 +1551,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
           ele.appendChild(span);
           if (onlineOrder === parentOrderId) {
             const span = findElementsByText('卖家发货（在线下单）', ele.closest('tr'))?.[0];
-            if (span) {
-              span.style.color = 'red';
-            }
+            if (span) span.style.color = 'red';
           }
         }
         currentOrderData
@@ -1860,7 +1860,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         const text = firstNode?.nodeType === 3 ? firstNode?.nodeValue : null;
         if (text && text.match(/^\w+\-\d+\-\d+$/)) {
           const href = e.target.closest('tr')?.querySelector('.temu_plugin_sku_extra .temu_plugin_href')?.href;
-          getAddrAndPackage(text, href);
+          getAddrAndPackage(text, href, e.target);
         }
       });
       if (window.location.pathname === '/mmsos/online-shipping.html') {
@@ -2151,7 +2151,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
       const ele = e.target;
       if (ele.closest('.temu_plugin_order_face_sheet') || ele.classList.contains('temu_plugin_order_face_sheet')) {
         const order = ele.dataset.order;
-        getAddrAndPackage(order);
+        getAddrAndPackage(order, null, ele);
       }
       if (ele.closest('.temu_plugin_order_extra_gooditem_close') && confirm('是否要移除订单')) {
         const id = ele.closest('.temu_plugin_order_extra_gooditem_close').dataset.id;
