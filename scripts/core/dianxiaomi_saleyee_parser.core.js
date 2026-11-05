@@ -450,5 +450,9 @@ window.dianxiaomi_saleyee_parser_core = async () => {
         await collectCb()
         window.open('https://www.dianxiaomi.com/popTemuProduct/add.htm?collection=1')
     })
-    setSelect('select.logisticsselect', '396')
+    const select = document.querySelector('select.logisticsselect');
+    if (select) {
+        logitsid = findElementsByText('Self-Pick up', select)?.[0]?.dataset?.logitsid
+        logitsid && setSelect('select.logisticsselect',  logitsid)
+    }
 }
