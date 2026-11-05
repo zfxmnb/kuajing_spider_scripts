@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
-  if (window.self !== window.top || window.location.pathname === '/mmsos/print.html') return;
-  console.log('temu_helper_v2_core running', '202608251023');
+  if (window.location.pathname === '/mmsos/print.html') return;
+  console.log('temu_helper_v2_core running', '202611051825');
   let mallId =
     window.rawData?.store?.mallid ||
     window.localStorage.getItem('mall-info-id') ||
@@ -85,6 +85,135 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     worker.onmessage = fn;
     return function () {
       worker.postMessage('');
+    };
+  }
+  // 打开弹窗
+  function openIframeModal(url, options = {}) {
+    // 1. 创建 Mask (遮罩层)
+    const mask = document.createElement('div');
+    mask.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 99999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(2px);
+  `;
+
+    // 2. 创建弹窗容器 (宽度 90%，最大高度 90%)
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+    position: relative;
+    width: 90%;
+    height: 90%;
+    max-height: 90%;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  `;
+    modal.addEventListener('click', (e) => e.stopPropagation());
+    // 3. 创建关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '×';
+    closeBtn.style.cssText = `
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    width: 32px;
+    height: 32px;
+    background-color: rgba(0, 0, 0, 0.4);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.2s;
+  `;
+    closeBtn.onmouseover = () => (closeBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.7)');
+    closeBtn.onmouseout = () => (closeBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.4)');
+    // 4. 创建 iframe
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = `
+    width: 100%;
+    height: 100%;
+    border: none;
+    flex: 1;
+  `;
+    // 5. 核心关闭逻辑
+    let isClosed = false;
+    const originalOverflow = document.body.style.overflow;
+    const closeModal = () => {
+      if (isClosed) return;
+      isClosed = true;
+      // 清理全局事件监听
+      window.removeEventListener('keydown', handleKeyDown);
+      // 释放 iframe 内部资源，停止视频/音频播放与脚本运行
+      try {
+        iframe.src = 'about:blank';
+      } catch (_) {}
+      // 移除 DOM
+      if (document.body.contains(mask)) {
+        document.body.removeChild(mask);
+      }
+      document.body.style.overflow = originalOverflow;
+      if (typeof options.onClose === 'function') {
+        options.onClose();
+      }
+    };
+    // 支持键盘 ESC 退出
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') closeModal();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    // 6. 【重点修复】：务必先绑定 load 事件，再赋值 src 与挂载 DOM
+    iframe.addEventListener('load', () => {
+      const injectHijack = () => {
+        try {
+          if (iframe.contentWindow) {
+            iframe.contentWindow.close = closeModal;
+          }
+        } catch (e) {
+          console.warn('[Modal] 同源策略限制，无法劫持 iframe 内部的 window.close', e);
+        }
+      };
+
+      // 页面完成加载时注入
+      injectHijack();
+
+      // 兜底监听 BFCache 恢复唤醒事件
+      try {
+        iframe.contentWindow?.addEventListener('pageshow', injectHijack);
+      } catch (_) {}
+    });
+    // 7. 绑定完成后再设置 src，确保不会丢失 load 触发
+    iframe.src = url;
+    // 8. 组装并挂载 DOM
+    modal.appendChild(closeBtn);
+    modal.appendChild(iframe);
+    mask.appendChild(modal);
+    document.body.appendChild(mask);
+    document.body.style.overflow = 'hidden';
+    // 9. 绑定遮罩与按钮的关闭交互
+    mask.addEventListener('click', closeModal);
+    closeBtn.addEventListener('click', closeModal);
+    // 10. 返回句柄
+    return {
+      close: closeModal,
+      iframe: iframe,
+      mask: mask
     };
   }
   // -----------------------------------------------------------------------------
@@ -1146,13 +1275,23 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
   const getAddrAndPackage = async (text, href) => {
     const launch = async (packagesData) => {
       const isHttp = !!href && /^#*http/.test(href);
+      const launchWarehouse = isHttp || !!config.DefaultWarehouse;
+      let warehouseUrl = href?.replace(/^#+/, '') || config.DefaultWarehouse;
       await new Promise((r) => setTimeout(r, 200));
-      if (confirm(`地址复制完成${packagesData?.length ? '[含面单]' : '[不含面单]'}！${isHttp ? '是否跳转去下单' : ''}`) && isHttp) {
-        let url = window.open(href.replace(/^#+/, ''));
-        if (url.includes('https://xhl.topwms.com/warehouse/stock_list')) {
-          url = url.replace('https://xhl.topwms.com/warehouse/stock_list', 'https://xhl.topwms.com/manual_order/index');
+      const hasShippingLabel = !!packagesData?.length;
+      if (
+        confirm(
+          `地址复制完成${hasShippingLabel ? '[含面单]' : '[不含面单]'}！${config.PlaceAnOrderOnline && !hasShippingLabel ? '是否打开在线下单' : launchWarehouse ? '是否跳转去下单' : ''}`
+        )
+      ) {
+        if (config.PlaceAnOrderOnline && !hasShippingLabel) {
+          openIframeModal(`https://agentseller-us.temu.com/mmsos/online-shipping.html?parent_order_sn_list=%5B%22${text}%22%5D&refer_page_name=orders_page`);
+        } else if (launchWarehouse) {
+          if (warehouseUrl.includes('https://xhl.topwms.com/warehouse/stock_list')) {
+            warehouseUrl = warehouseUrl.replace('https://xhl.topwms.com/warehouse/stock_list', 'https://xhl.topwms.com/manual_order/index');
+          }
+          window.open(warehouseUrl);
         }
-        window.open(url);
       }
     };
     const packagesSource = await getOrderPackages(text);
@@ -1727,35 +1866,70 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
       if (window.location.pathname === '/mmsos/online-shipping.html') {
         let inputEle = document.querySelector('[id="packageList[0].warehouseId"] input');
         const timer = setInterval(async () => {
-          const oneClickImport = findElementsByText('一键填充')?.[0];
-          if (!oneClickImport) return;
+          const oneClickImports = findElementsByText('一键填充', document.querySelector('[data-testid="beast-core-table"]')).filter(
+            (node) => !!node?.closest('[data-testid="beast-core-table-td"]')
+          );
+          if (!oneClickImports?.length) return;
           clearInterval(timer);
-          oneClickImport?.click();
-          await new Promise((r) => setTimeout(r, 1000));
-          const prevWarehouse = window.localStorage.getItem('__prev_warehouse__');
-          inputEle = document.querySelector('[id="packageList[0].warehouseId"] input');
-          if (prevWarehouse && inputEle && !inputEle?.value) {
-            inputEle?.click();
-            let retry = 2;
-            const timer2 = setInterval(() => {
-              const ele = findElementsByText(prevWarehouse)
-                .find((e) => e.closest('li[role="option"]'))
-                ?.closest('li[role="option"]');
-              if (ele) {
-                clearInterval(timer2);
-                ele?.click?.();
-                setTimeout(() => inputEle?.click(), 50);
-              } else if (retry >= 1) {
-                inputEle?.click();
-                retry -= 1;
+          oneClickImports.forEach(async (oneClickImport, index) => {
+            if (!oneClickImport) return;
+            oneClickImport?.click();
+            const item = oneClickImport.closest('tr');
+            await new Promise((r) => setTimeout(r, 1000));
+            const prevWarehouse = window.localStorage.getItem('__prev_warehouse__');
+            inputEle = item.querySelector(`[id="packageList[${index}].warehouseId"] input`);
+            const selectLogistics = async () => {
+              const td = inputEle?.closest('td')?.nextElementSibling;
+              const left = td?.querySelector('[class^="ST_selectValueSingle"] input[value="需要签名"]');
+              const right = td?.querySelector('[class^="ST_selectValueSingle"] input:not([value$="签名"])');
+              if (left) {
+                left.click();
+                await new Promise((r) => setTimeout(r, 100));
+                document
+                  .querySelectorAll('[class^="ST_dropdownPanel"] li')
+                  ?.find((item) => item.innerText === '无需签名')
+                  ?.click();
               }
-            }, 500);
-            setTimeout(() => {
-              clearInterval(timer2);
-            }, 5000);
-          } else {
-            inputEle?.click();
-          }
+              await new Promise((r) => setTimeout(r, 100));
+              right.click();
+              let timer2 = setInterval(() => {
+                const ele = findElementsByText('预估$')
+                  .find((e) => !!e.closest('[data-testid="beast-core-portal-main"]'))
+                  ?.closest('div');
+                if (ele) {
+                  clearInterval(timer2);
+                  timer2 = null;
+                  ele?.click?.();
+                }
+              }, 500);
+              setTimeout(() => {
+                timer2 && clearInterval(timer2);
+              }, 5000);
+            };
+            if (prevWarehouse && inputEle && !inputEle?.value) {
+              inputEle?.click();
+              let retry = 2;
+              let timer2 = setInterval(() => {
+                const ele = findElementsByText(prevWarehouse)
+                  .find((e) => e.closest('li[role="option"]'))
+                  ?.closest('li[role="option"]');
+                if (ele) {
+                  clearInterval(timer2);
+                  timer2 = null;
+                  ele?.click?.();
+                  selectLogistics();
+                } else if (retry >= 1) {
+                  inputEle?.click();
+                  retry -= 1;
+                }
+              }, 500);
+              setTimeout(() => {
+                timer2 && clearInterval(timer2);
+              }, 5000);
+            } else {
+              inputEle?.click();
+            }
+          });
         }, 1000);
         setTimeout(() => {
           clearInterval(timer);
@@ -2403,7 +2577,8 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
   };
   (async () => {
     // 执行
-    if (config) {
+    commonInit();
+    if (config && window.parent === window) {
       await getProductsData();
       await getOrdersData(true);
       init();
@@ -2413,10 +2588,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         console.log('orderInit::');
         orderInit();
       }
-      if (seller) {
-        sellerInit();
-      }
+      if (seller) sellerInit();
     }
-    commonInit();
   })();
 };

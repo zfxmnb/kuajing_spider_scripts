@@ -7,7 +7,6 @@
 // @match        https://seller.kuajingmaihuo.com/*
 // @match        https://agentseller.temu.com/*
 // @match        https://agentseller-us.temu.com/*
-// @exclude      *iframe*
 // @run-at       document-end
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
 // @grant        GM_xmlhttpRequest
@@ -24,12 +23,12 @@
 // https://gh-proxy.com/$GITHUB_URL
 // https://ghfast.top/$GITHUB_URL
 // https://cdn.bootcdn.net/ajax/libs/xlsx/0.17.0/xlsx.full.min.js、https://cdn.jsdelivr.net/npm/xlsx@0.17.0/dist/xlsx.full.min.js
-(async function() {
-    let fetchInterceptor
-    try {
-        fetchInterceptor = fetchInterceptorInit(unsafeWindow);
-    } catch (err) {}
-    setTimeout(() => {
-        temu_helper_v2_core(fetchInterceptor);
-    }, 100)
+(async function () {
+  let fetchInterceptor;
+  try {
+    fetchInterceptor = fetchInterceptorInit(unsafeWindow);
+  } catch (err) {}
+  setTimeout(() => {
+    temu_helper_v2_core(fetchInterceptor);
+  }, 100);
 })();
