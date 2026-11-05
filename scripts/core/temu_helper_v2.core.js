@@ -1281,10 +1281,10 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
       const hasShippingLabel = !!packagesData?.length;
       if (
         confirm(
-          `地址复制完成${hasShippingLabel ? '[含面单]' : '[不含面单]'}！${config.PlaceAnOrderOnline && !hasShippingLabel ? '是否打开在线下单' : launchWarehouse ? '是否跳转去下单' : ''}`
+          `地址复制完成${hasShippingLabel ? '[含面单]' : '[不含面单]'}！${!config.PlaceAnOrderOnlineDisabled && !hasShippingLabel ? '是否打开在线下单' : launchWarehouse ? '是否跳转去下单' : ''}`
         )
       ) {
-        if (config.PlaceAnOrderOnline && !hasShippingLabel) {
+        if (!config.PlaceAnOrderOnlineDisabled && !hasShippingLabel) {
           openIframeModal(`https://agentseller-us.temu.com/mmsos/online-shipping.html?parent_order_sn_list=%5B%22${text}%22%5D&refer_page_name=orders_page`, {
             onClose: () => document.querySelector('[class^="Grid_filterWrapper"] button[type="submit"]')?.click()
           });
@@ -1331,6 +1331,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     }
     if (addressMap[text]) {
       addressMap[text].packagesData = packagesData;
+      addressMap[text].copy_time = Date.now();
       copyToClipboard(JSON.stringify(addressMap[text]));
       launch(packagesData);
       return;
@@ -1339,6 +1340,19 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
       if (res) {
         res.packagesData = packagesData;
         res.copy_time = Date.now();
+        res.mallId = mallId;
+        const products = []
+        const skuEles = findElementsByText('SKU ID', ele.closest('tr'))
+        if (skuEles?.length) {
+          skuEles.forEach((ele) => {
+            const title = ele?.closest('div')?.parentElement?.querySelector('div:first-child > div > div')?.innerText || '';
+            const quantityStr = ele?.closest('div')?.parentElement?.querySelector('div:first-child > div > span')?.innerText || '×1';
+            quantity = Number(quantityStr.replace('x', '')) || 1
+            sku = ele?.nextElementSibling?.innerText
+            products.push({sku, quantity, title})
+          })
+        }
+        res.products = products
         copyToClipboard(JSON.stringify(res));
         launch(packagesData);
         addressMap[text] = res;
@@ -1879,14 +1893,15 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
             const prevWarehouse = window.localStorage.getItem('__prev_warehouse__');
             inputEle = item.querySelector(`[id="packageList[${index}].warehouseId"] input`);
             const selectLogistics = async () => {
+              await new Promise((r) => setTimeout(r, 1500));
               const td = inputEle?.closest('td')?.nextElementSibling;
               const left = td?.querySelector('[class^="ST_selectValueSingle"] input[value="需要签名"]');
               const right = td?.querySelector('[class^="ST_selectValueSingle"] input:not([value$="签名"])');
               if (left) {
                 left.click();
                 await new Promise((r) => setTimeout(r, 100));
-                document
-                  .querySelectorAll('[class^="ST_dropdownPanel"] li')
+                [...(document
+                  .querySelectorAll('[class^="ST_dropdownPanel"] li') ?? [])]
                   ?.find((item) => item.innerText === '无需签名')
                   ?.click();
               }
@@ -1962,7 +1977,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
                 const orderId = body?.send_request_list?.[0]?.order_send_info_list?.[0]?.parent_order_sn;
                 if (orderId) {
                   if (confirm('是否立即复制面单！')) {
-                    await getAddrAndPackage(orderId);
+                    await getAddrAndPackage(orderId, null);
                   }
                 }
               }

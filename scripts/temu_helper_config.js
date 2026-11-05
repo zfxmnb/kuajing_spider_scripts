@@ -56,7 +56,7 @@
       // AutoDisabled: true
 
       // 是否开启点击“面单“完成在线下单
-      PlaceAnOrderOnline: true,
+      PlaceAnOrderOnlineDisabled: false,
 
       // 默认发货仓库地址
       DefaultWarehouse: ''
