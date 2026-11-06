@@ -1,0 +1,17 @@
+{
+  "listen_host": "127.0.0.1",
+  "sites": [
+    {
+      "name": "saleyee",
+      "listen_port": 2001,
+      "target_origin": "https://www.saleyee.com/",
+      "timeout_seconds": 30
+    },
+    {
+      "name": "youyi4pl",
+      "listen_port": 2002,
+      "target_origin": "http://www.youyi4pl.com/",
+      "timeout_seconds": 30
+    }
+  ]
+}

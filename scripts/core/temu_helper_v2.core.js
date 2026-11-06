@@ -22,6 +22,40 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
   const Host = config?.Host || '127.0.0.1'; // host
   const LocalServiceDisabled = config?.LocalServiceDisabled ?? false; // 是否禁用本地服务
   const WeComRobotWebhook = config?.WeComRobotWebhook?.trim?.() || ''; // 企业微信机器人 Webhook
+  const configuredWarehouses = Array.isArray(config?.warehouses)
+    ? config.warehouses
+        .map((warehouse) => {
+          const url = typeof warehouse?.url === 'string' && /^https?:\/\//.test(warehouse.url.trim()) ? warehouse.url.trim() : '';
+          const fallbackUrl = typeof warehouse?.fallbackUrl === 'string' && /^https?:\/\//.test(warehouse.fallbackUrl.trim()) ? warehouse.fallbackUrl.trim() : '';
+          return {
+            name: typeof warehouse?.name === 'string' ? warehouse.name.trim() : '',
+            url,
+            fallbackUrl,
+            useFallbackUrl: !url && !!fallbackUrl
+          };
+        })
+        .filter((warehouse) => warehouse.name && (warehouse.url || warehouse.fallbackUrl))
+    : [];
+  const checkWarehouseUrl = async (warehouse) => {
+    if (!warehouse.url || !warehouse.fallbackUrl) return;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    let shouldUseFallbackUrl = true;
+    try {
+      const response = await fetch(warehouse.url, { cache: 'no-store', signal: controller.signal });
+      shouldUseFallbackUrl = response.status !== 200;
+    } catch {
+      shouldUseFallbackUrl = true;
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (shouldUseFallbackUrl) warehouse.useFallbackUrl = true;
+  };
+  const warehouses = configuredWarehouses;
+  warehouses.forEach((warehouse) => {
+    void checkWarehouseUrl(warehouse);
+  });
+  const selectedWarehouseCacheKey = `__temu_selected_warehouse__${mallId || 'default'}`;
   const Origin = `http://${Host}:${Port}`;
   const pollingInterval = 15 * 60 * 1000 + Math.round(Math.random() * 15 * 1000); // 轮询代发货订单及平台处理中订单
   const oneDay = 24 * 60 * 60 * 1000;
@@ -146,6 +180,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     closeBtn.onmouseout = () => (closeBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.4)');
     // 4. 创建 iframe
     const iframe = document.createElement('iframe');
+    iframe.setAttribute('allow', 'clipboard-read; clipboard-write');
     iframe.style.cssText = `
     width: 100%;
     height: 100%;
@@ -1272,11 +1307,19 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     });
   };
   const addressMap = {};
+  const getSelectedWarehouse = () => warehouses.find((warehouse) => warehouse.name === window.localStorage.getItem(selectedWarehouseCacheKey)) || warehouses[0];
+  const getSelectedWarehouseUrl = () => {
+    const warehouse = getSelectedWarehouse();
+    return warehouse?.useFallbackUrl ? warehouse.fallbackUrl : warehouse?.url || warehouse?.fallbackUrl || '';
+  };
   const getAddrAndPackage = async (text, href, ele) => {
     const launch = async (packagesData) => {
       const isHttp = !!href && /^#*http/.test(href);
-      const launchWarehouse = isHttp || !!config.DefaultWarehouse;
-      let warehouseUrl = href?.replace(/^#+/, '') || config.DefaultWarehouse;
+      const selectedWarehouse = isHttp ? null : getSelectedWarehouse();
+      const warehouseUrl = isHttp ? href.replace(/^#+/, '') : getSelectedWarehouseUrl();
+      const launchWarehouse = !!warehouseUrl;
+      const shouldOpenFallbackUrl = !!selectedWarehouse?.useFallbackUrl;
+      const shouldOpenWarehouseInIframe = /^https?:\/\/127\.0\.0\.1(?::\d+)?(?:\/|$)/.test(warehouseUrl);
       await new Promise((r) => setTimeout(r, 200));
       const hasShippingLabel = !!packagesData?.length;
       if (
@@ -1284,13 +1327,18 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
           `地址复制完成${hasShippingLabel ? '[含面单]' : '[不含面单]'}！${!config.PlaceAnOrderOnlineDisabled && !hasShippingLabel ? '是否打开在线下单' : launchWarehouse ? '是否跳转去下单' : ''}`
         )
       ) {
-        if (!config.PlaceAnOrderOnlineDisabled && !hasShippingLabel) {
+        if (!config.PlaceAnOrderOnlineDisabled && !hasShippingLabel && !shouldOpenFallbackUrl) {
           openIframeModal(`https://agentseller-us.temu.com/mmsos/online-shipping.html?parent_order_sn_list=%5B%22${text}%22%5D&refer_page_name=orders_page`, {
             onClose: () => document.querySelector('[class^="Grid_filterWrapper"] button[type="submit"]')?.click()
           });
         } else if (launchWarehouse) {
+          if (shouldOpenWarehouseInIframe) {
+            openIframeModal(warehouseUrl);
+            return;
+          }
           if (warehouseUrl.includes('https://xhl.topwms.com/warehouse/stock_list')) {
-            warehouseUrl = warehouseUrl.replace('https://xhl.topwms.com/warehouse/stock_list', 'https://xhl.topwms.com/manual_order/index');
+            window.open(warehouseUrl.replace('https://xhl.topwms.com/warehouse/stock_list', 'https://xhl.topwms.com/manual_order/index'));
+            return;
           }
           window.open(warehouseUrl);
         }
@@ -1341,18 +1389,18 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         res.packagesData = packagesData;
         res.copy_time = Date.now();
         res.mallId = mallId;
-        const products = []
-        const skuEles = findElementsByText('SKU ID', ele.closest('tr'))
+        const products = [];
+        const skuEles = findElementsByText('SKU ID', ele.closest('tr'));
         if (skuEles?.length) {
           skuEles.forEach((ele) => {
             const title = ele?.closest('div')?.parentElement?.querySelector('div:first-child > div > div')?.innerText || '';
             const quantityStr = ele?.closest('div')?.parentElement?.querySelector('div:first-child > div > span')?.innerText || '×1';
-            quantity = Number(quantityStr.replace('x', '')) || 1
-            sku = ele?.nextElementSibling?.innerText
-            products.push({sku, quantity, title})
-          })
+            quantity = Number(quantityStr.replace('x', '')) || 1;
+            sku = ele?.nextElementSibling?.innerText;
+            products.push({ sku, quantity, title });
+          });
         }
-        res.products = products
+        res.products = products;
         copyToClipboard(JSON.stringify(res));
         launch(packagesData);
         addressMap[text] = res;
@@ -1385,6 +1433,11 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         .temu_plugin a, .temu_plugin_sku_extra_link, .temu_plugin_sku_extra_remove {
             cursor: pointer;
             color: #000;
+        }
+        .temu_plugin select {
+            max-width: 140px;
+            height: 16px;
+            font-size: 10px; 
         }
         .hide {
             display: none;
@@ -1491,6 +1544,24 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         <a id="temu_order_download" download class="hide">订单xlsx</a>
         <a id="temu_orders_statistics" class="hide"></a>
     </div>`);
+  console.log(root, warehouses);
+  if (warehouses.length) {
+    const selectedWarehouse = getSelectedWarehouse();
+    const warehouseSelect = document.createElement('select');
+    warehouseSelect.id = 'temu_warehouse_select';
+    warehouseSelect.setAttribute('aria-label', '发货仓库');
+    warehouses.forEach((warehouse) => {
+      const option = document.createElement('option');
+      option.value = warehouse.name;
+      option.textContent = warehouse.name;
+      option.selected = warehouse.name === selectedWarehouse?.name;
+      warehouseSelect.appendChild(option);
+    });
+    warehouseSelect.addEventListener('change', () => {
+      window.localStorage.setItem(selectedWarehouseCacheKey, warehouseSelect.value);
+    });
+    document.querySelector('.temu_plugin')?.appendChild(warehouseSelect);
+  }
   function productUpdate() {
     // console.log('商品视图更新')
     document.querySelectorAll('.temu_plugin_sku_extra').forEach((ele) => {
@@ -1900,10 +1971,7 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
               if (left) {
                 left.click();
                 await new Promise((r) => setTimeout(r, 100));
-                [...(document
-                  .querySelectorAll('[class^="ST_dropdownPanel"] li') ?? [])]
-                  ?.find((item) => item.innerText === '无需签名')
-                  ?.click();
+                [...(document.querySelectorAll('[class^="ST_dropdownPanel"] li') ?? [])]?.find((item) => item.innerText === '无需签名')?.click();
               }
               await new Promise((r) => setTimeout(r, 100));
               right.click();

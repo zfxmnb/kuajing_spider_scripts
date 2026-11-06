@@ -13,6 +13,8 @@
 // @match        https://cnuser.returnhelper.com/*
 // @match        https://oms.xlwms.com/*
 // @match        http://www.youyi4pl.com/*
+// @match        http://127.0.0.1:2001/*
+// @match        http://127.0.0.1:2002/*
 // @grant        GM_xmlhttpRequest
 // @require      https://gh-proxy.com/https://raw.githubusercontent.com/zfxmnb/kuajing_spider_scripts/refs/heads/main/scripts/core/common_plugin.core.js
 // ==/UserScript==
@@ -20,6 +22,6 @@
 // 代理
 // https://gh-proxy.com/$GITHUB_URL
 // https://ghfast.top/$GITHUB_URL
-(async function() {
-    common_plugin_core();
+(async function () {
+  common_plugin_core();
 })();

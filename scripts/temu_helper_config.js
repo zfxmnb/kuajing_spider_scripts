@@ -58,8 +58,15 @@
       // 是否开启点击“面单“完成在线下单
       PlaceAnOrderOnlineDisabled: false,
 
-      // 默认发货仓库地址
-      DefaultWarehouse: ''
+      // 发货仓库列表。页面会显示选择框并按店铺缓存选择；url 优先，url 无效时使用 fallbackUrl。
+      warehouses: [
+        { name: '优一', url: 'http://127.0.0.1:2002/deliver.php?act=add&import=1', fallbackUrl: 'http://www.youyi4pl.com/deliver.php?act=add&import=1' },
+        {
+          name: '赛盈',
+          url: 'http://127.0.0.1:2001/search.html?inputkwd=&onlyavailable=True&WarehouseIds_String=123&SaleMode=3',
+          fallbackUrl: 'https://www.saleyee.com/search.html?inputkwd=&onlyavailable=True&WarehouseIds_String=123&SaleMode=3'
+        }
+      ]
     }
   };
 })();
