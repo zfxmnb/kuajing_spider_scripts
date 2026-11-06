@@ -379,10 +379,6 @@ window.common_plugin_core = async () => {
           changeEvent?.call(this, e, ...rest);
         };
       }
-      await sleep(1000);
-      if (window.location.search?.includes('import=1') || data?.packagesData?.length === 1) {
-        document.querySelector('.youyi_checkout_import')?.click();
-      }
     };
     if (document.readyState !== 'loading') {
       setTimeout(fn, 1500);
