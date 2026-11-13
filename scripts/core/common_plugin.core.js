@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-  console.log('common_plugin_core running', '202611061816');
+  console.log('common_plugin_core running', '202611131809');
   const matchDomains = [
     'www.gigab2b.com',
     'www.saleyee.com',
@@ -299,10 +299,10 @@ window.common_plugin_core = async () => {
         border-bottom: 1px solid;
     }
     .common_plugin * {
-        font-size: 10px !important;
+        font-size: 11px !important;
     }
     .common_plugin a, .common_plugin span {
-        font-size: 10px !important;
+        font-size: 11px !important;
         color: blue;
     }
     .common_plugin div:last-child {
@@ -310,7 +310,16 @@ window.common_plugin_core = async () => {
     }
     .common_plugin .addr_item_value, .common_plugin .sale_checkout_import, .common_plugin .topwms_checkout_import {
         cursor: pointer;
-        font-size: 10px !important;
+        font-size: 11px !important;
+    }
+    .common_plugin .product_title {
+        display: inline-block;
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: bottom;
+        white-space: nowrap;
+        line-height: 1;
     }
     .hide {
         display: none;
@@ -439,8 +448,10 @@ window.common_plugin_core = async () => {
     }
     if (data?.products?.length) {
       html += '<div>';
-      data?.products?.forEach(({ sku, title, quantity }, index) => {
-        html += `<span title='${title}'><b style="color:red;">x${quantity}</b>&nbsp;${title}</span>&nbsp;&nbsp;`;
+      data?.products?.forEach(({ sku, title, quantity, attr }, index) => {
+        const productTitle = title ?? '';
+        const displayAttr = attr ? `[${attr}]&nbsp;` : '';
+        html += `<span><b style="color:red;">x${quantity}</b>&nbsp;${displayAttr}<span class="product_title" title='${productTitle}'>${productTitle}</span></span>&nbsp;&nbsp;`;
       });
       html += '</div>';
     }

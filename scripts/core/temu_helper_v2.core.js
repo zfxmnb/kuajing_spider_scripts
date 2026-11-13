@@ -1,6 +1,6 @@
 window.temu_helper_v2_core = async (fetchInterceptor) => {
   if (window.location.pathname === '/mmsos/print.html') return;
-  console.log('temu_helper_v2_core running', '202611051825');
+  console.log('temu_helper_v2_core running', '202611131809');
   let mallId =
     window.rawData?.store?.mallid ||
     window.localStorage.getItem('mall-info-id') ||
@@ -1393,11 +1393,14 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         const skuEles = findElementsByText('SKU ID', ele.closest('tr'));
         if (skuEles?.length) {
           skuEles.forEach((ele) => {
-            const title = ele?.closest('div')?.parentElement?.querySelector('div:first-child > div > div')?.innerText || '';
-            const quantityStr = ele?.closest('div')?.parentElement?.querySelector('div:first-child > div > span')?.innerText || '×1';
+            const parent = ele?.closest('div')?.parentElement;
+            const title = parent?.querySelector('div:first-child > div > div')?.innerText || '';
+            const quantityStr = parent?.querySelector('div:first-child > div > span')?.innerText || '×1';
+            const attrEle = parent ? findElementsByText('属性', parent)?.[0] : null;
+            const attr = attrEle?.nextElementSibling?.innerText ?? '';
             quantity = Number(quantityStr.replace('x', '')) || 1;
             sku = ele?.nextElementSibling?.innerText;
-            products.push({ sku, quantity, title });
+            products.push({ sku, quantity, title, attr });
           });
         }
         res.products = products;
