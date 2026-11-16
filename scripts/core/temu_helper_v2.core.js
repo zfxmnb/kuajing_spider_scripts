@@ -181,6 +181,13 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     // 4. 创建 iframe
     const iframe = document.createElement('iframe');
     iframe.setAttribute('allow', 'clipboard-read; clipboard-write');
+    // 保留绝大多数嵌入页能力（登录弹窗、表单、下载、剪贴板与交互），
+    // 但不要授予 allow-top-navigation*。这样 top.location / target="_top"
+    // 无法带走父页面；独立打开的登录页则可脱离沙箱正常完成跳转。
+    iframe.setAttribute(
+      'sandbox',
+      'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads allow-modals allow-pointer-lock allow-presentation allow-orientation-lock allow-storage-access-by-user-activation'
+    );
     iframe.style.cssText = `
     width: 100%;
     height: 100%;
