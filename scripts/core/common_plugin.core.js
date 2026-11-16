@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-  console.log('common_plugin_core running', '202611161229');
+  console.log('common_plugin_core running', '202611161739');
   // 新增本地副本时只需补充 origins；同时在 common_plugin.js 添加对应的 @match。
   const siteConfigs = [
     { id: 'gigab2b', origins: ['https://www.gigab2b.com'], checkoutRoutes: [{ pathname: '/index.php', searchParams: { route: 'account/sales_order/sales_order_management' } }] },
@@ -9,7 +9,7 @@ window.common_plugin_core = async () => {
     { id: 'goodcang', origins: ['https://us.goodcang.com', 'https://oms.goodcang.com'], checkoutRoutes: [{ pathname: '/order/add' }] },
     { id: 'returnhelper', origins: ['https://returnhelper.com', 'https://cnuser.returnhelper.com', 'https://cnuser.returnhelper.com.hk'] },
     { id: 'xlwms', origins: ['https://oms.xlwms.com'], checkoutRoutes: [{ pathname: '/warehouse/packet/create' }] },
-    { id: 'youyi', origins: ['http://www.youyi4pl.com', 'http://127.0.0.1:2002'], checkoutRoutes: [{ pathname: '/deliver.php' }] }
+    { id: 'youyi', origins: ['http://www.youyi4pl.com', 'http://127.0.0.1:2002'], checkoutRoutes: [{ pathname: '/deliver.php', excludedSearchParams: { act: 'add_products' } }] }
   ];
   const currentSite = siteConfigs.find((site) => site.origins.includes(window.location.origin));
   if (!currentSite) {
@@ -18,7 +18,8 @@ window.common_plugin_core = async () => {
   const getCurrentUrl = () => new URL(window.location.href);
   const matchesCheckoutRoute = (route, pageUrl) =>
     (pageUrl.pathname === route.pathname || pageUrl.pathname.startsWith(`${route.pathname}/`)) &&
-    Object.entries(route.searchParams ?? {}).every(([name, value]) => pageUrl.searchParams.get(name) === value);
+    Object.entries(route.searchParams ?? {}).every(([name, value]) => pageUrl.searchParams.get(name) === value) &&
+    Object.entries(route.excludedSearchParams ?? {}).every(([name, value]) => pageUrl.searchParams.get(name) !== value);
   const isCurrentSite = (siteId) => currentSite.id === siteId;
   const isCurrentCheckout = (siteId) => isCurrentSite(siteId) && currentSite.checkoutRoutes?.some((route) => matchesCheckoutRoute(route, getCurrentUrl()));
   const isCurrentCheckoutPage = () => currentSite.checkoutRoutes?.some((route) => matchesCheckoutRoute(route, getCurrentUrl()));
@@ -254,17 +255,82 @@ window.common_plugin_core = async () => {
     document.body.appendChild(div);
     return div;
   }
+  const commonPluginDataCacheKey = '__common_plugin_data__';
+  const pageWindow = typeof unsafeWindow === 'undefined' ? window : unsafeWindow;
+  let clipboardContent;
+  const cacheClipboardContent = (content) => {
+    if (typeof content !== 'string' || !content) return;
+    // 订单数据包含收件信息，仅保存于用户脚本内存，避免被页面脚本或磁盘缓存读取。
+    clipboardContent = content;
+    window.dispatchEvent(new Event('common_plugin_clipboard_ready'));
+  };
+  const clearClipboardContent = () => {
+    clipboardContent = undefined;
+  };
   async function getClipboardContent() {
-    try {
-      return await navigator.clipboard.readText();
-    } catch (err) {
-      console.error('Failed to read clipboard contents:', err);
+    if (clipboardContent) return clipboardContent;
+    if (typeof navigator.clipboard?.readText === 'function') {
+      try {
+        const content = await navigator.clipboard.readText();
+        cacheClipboardContent(content);
+        if (content) return content;
+      } catch (err) {
+        // 剪贴板授权由浏览器及用户手势决定，读取失败时保持静默。
+      }
     }
   }
+  const hasSameOriginParentWindow = () => {
+    if (pageWindow.parent === pageWindow) return false;
+    try {
+      return pageWindow.parent.location.origin === pageWindow.location.origin;
+    } catch (err) {
+      return false;
+    }
+  };
+  function getParentCommonPluginData() {
+    const currentUrl = getCurrentUrl();
+    if (!isCurrentSite('youyi') || currentUrl.pathname !== '/deliver.php' || currentUrl.searchParams.get('act') !== 'add_products' || !hasSameOriginParentWindow()) return;
+    try {
+      // 父子用户脚本仅在同源时共享真实页面窗口，避免向外部页面暴露订单数据。
+      return pageWindow.parent[commonPluginDataCacheKey];
+    } catch (err) {
+      return;
+    }
+  }
+  document.addEventListener(
+    'click',
+    () => {
+      void getClipboardContent();
+    },
+    true
+  );
+  document.addEventListener(
+    'paste',
+    (event) => {
+      cacheClipboardContent(event.clipboardData?.getData('text/plain'));
+    },
+    true
+  );
+  window.addEventListener('blur', clearClipboardContent);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') clearClipboardContent();
+  });
+  let copyToastTimer;
+  const showCopyToast = (text) => {
+    const toast = document.querySelector('.common_plugin_copy_toast') || document.createElement('div');
+    toast.className = 'common_plugin_copy_toast';
+    toast.textContent = String(text);
+    toast.style.cssText =
+      'position:fixed;left:50%;top:20px;z-index:2147483647;max-width:80vw;padding:8px 12px;border-radius:4px;background:rgba(0,0,0,.78);color:#fff;font-size:13px;line-height:1.4;white-space:pre-wrap;word-break:break-all;transform:translateX(-50%);';
+    if (!toast.parentElement) document.body.appendChild(toast);
+    window.clearTimeout(copyToastTimer);
+    copyToastTimer = window.setTimeout(() => toast.remove(), 1500);
+  };
   async function copyToClipboard(text) {
     try {
       await navigator.clipboard.writeText(text);
       console.log('Text copied to clipboard');
+      showCopyToast(text);
     } catch (err) {
       // console.error('Failed to copy text: ', err);
     }
@@ -279,28 +345,22 @@ window.common_plugin_core = async () => {
         background: #fff;
         border: 1px solid #999;
         border-radius: 3px;
-        padding: 0 6px;
+        padding: 0;
         opacity: 0.7;
         flex-wrap: wrap;
         line-height: 1;
     }
     .common_plugin div {
         color: #000;
-        font-size: 10px !important;
+        font-size: 9px !important;
         gap: 3px 5px;
-        padding: 2px 5px;
+        padding: 1px 2px;
         border-right: 1px solid;
         border-bottom: 1px solid;
-    }
-    .common_plugin * {
-        font-size: 11px !important;
     }
     .common_plugin a, .common_plugin span {
         font-size: 11px !important;
         color: blue;
-    }
-    .common_plugin div:last-child {
-        border-right: none;
     }
     .common_plugin .addr_item_value, .common_plugin .sale_checkout_import, .common_plugin .topwms_checkout_import {
         cursor: pointer;
@@ -315,12 +375,25 @@ window.common_plugin_core = async () => {
         white-space: nowrap;
         line-height: 1;
     }
+    .common_plugin .package_data_checkbox {
+        margin: 0 2px 0 0;
+        vertical-align: middle;
+    }
     .hide {
         display: none;
     }
     `);
   const root = html(`<div class="common_plugin hide"></div>`);
   const app = root.querySelector('.common_plugin');
+  const getSelectedPackages = (data) => {
+    const packages = Array.isArray(data?.packagesData) ? data.packagesData : [];
+    const checkboxes = [...app.querySelectorAll('.package_data_checkbox')];
+    if (checkboxes.length !== packages.length) return packages;
+    return checkboxes
+      .filter((checkbox) => checkbox.checked)
+      .map((checkbox) => packages[Number(checkbox.dataset.packageIndex)])
+      .filter(Boolean);
+  };
   if (isCurrentSite('topwms')) {
     let init = 0;
     const observer = new MutationObserver(
@@ -392,7 +465,7 @@ window.common_plugin_core = async () => {
 
   const getData = async () => {
     const content = await getClipboardContent();
-    let data = content;
+    let data = content || getParentCommonPluginData();
     if (typeof content === 'string' && /^\{/.test(content) && /\}$/.test(content)) {
       try {
         data = JSON.parse(content);
@@ -407,13 +480,89 @@ window.common_plugin_core = async () => {
     if (!data?.parent_order_sn || !data?.post_code || !data?.receipt_name || !data?.mobile || !data?.address_line1) {
       return;
     }
+    // 仅在数据完整时输出，便于本地确认剪贴板内容是否被正确解析。
+    console.log('[common_plugin] Clipboard data:', data);
     return data;
   };
+  const youyiSkuFnskuCacheKey = '__youyi_sku_fnsku_map_v1__';
+  const getYouyiSingleProduct = async () => {
+    const products = (await getData())?.products;
+    if (!Array.isArray(products) || products.length !== 1) return;
+    const [item] = products;
+    const sku = typeof item?.sku === 'string' ? item.sku.trim() : '';
+    const quantity = Number(item?.quantity);
+    if (!sku || !Number.isFinite(quantity) || quantity <= 0) return;
+    return { sku, quantity };
+  };
+  const getYouyiSkuFnskuMap = () => {
+    const map = Object.create(null);
+    try {
+      const cachedMap = JSON.parse(window.localStorage.getItem(youyiSkuFnskuCacheKey) || '{}');
+      if (cachedMap && typeof cachedMap === 'object') {
+        Object.entries(cachedMap).forEach(([sku, fnsku]) => {
+          if (typeof fnsku === 'string' && fnsku) map[sku] = fnsku;
+        });
+      }
+    } catch (err) {}
+    return map;
+  };
+  const saveYouyiSkuFnsku = (sku, fnsku) => {
+    if (!sku || !fnsku) return;
+    const map = getYouyiSkuFnskuMap();
+    map[sku] = fnsku;
+    try {
+      window.localStorage.setItem(youyiSkuFnskuCacheKey, JSON.stringify(map));
+    } catch (err) {}
+  };
+  const getYouyiProductRow = (fnsku) => [...document.querySelectorAll('#table tr')].find((row) => row.querySelector('input[name="ck_sku[]"]')?.value?.trim() === fnsku);
+  const setYouyiQuantityInput = (input, quantity) => {
+    const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    input.focus({ preventScroll: true });
+    if (valueSetter) {
+      valueSetter.call(input, String(quantity));
+    } else {
+      input.value = String(quantity);
+    }
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    input.blur();
+  };
+  const isYouyiAddProductsPage = () => isCurrentSite('youyi') && getCurrentUrl().pathname === '/deliver.php' && getCurrentUrl().searchParams.get('act') === 'add_products';
+  const initializeYouyiProductMapping = () => {
+    const applyCachedQuantity = async () => {
+      const product = await getYouyiSingleProduct();
+      const fnsku = product && getYouyiSkuFnskuMap()[product.sku];
+      const quantityInput = fnsku && getYouyiProductRow(fnsku)?.querySelector('input[name="nums[]"]');
+      if (quantityInput) setYouyiQuantityInput(quantityInput, product.quantity);
+    };
+    document.addEventListener('change', async (event) => {
+      const quantityInput = event.target;
+      if (!(quantityInput instanceof HTMLInputElement) || !quantityInput.matches('#table input[name="nums[]"]')) return;
+      const quantity = Number(quantityInput.value);
+      if (!Number.isFinite(quantity) || quantity <= 0) return;
+      const product = await getYouyiSingleProduct();
+      const fnsku = quantityInput.closest('tr')?.querySelector('input[name="ck_sku[]"]')?.value?.trim();
+      if (product && fnsku) saveYouyiSkuFnsku(product.sku, fnsku);
+    });
+    const observer = new MutationObserver(() => {
+      if (document.querySelector('#table input[name="nums[]"]')) {
+        void applyCachedQuantity();
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    if (document.querySelector('#table input[name="nums[]"]')) void applyCachedQuantity();
+    window.addEventListener('common_plugin_clipboard_ready', () => void applyCachedQuantity());
+    setTimeout(() => observer.disconnect(), 10000);
+  };
+  if (isYouyiAddProductsPage()) initializeYouyiProductMapping();
   let hasData = false;
   const handle = async () => {
     const data = await getData();
     if (!data) return;
     hasData = true;
+    pageWindow[commonPluginDataCacheKey] = data;
     app.classList.remove('hide');
     app.dataSource = data;
     let html = '';
@@ -422,21 +571,22 @@ window.common_plugin_core = async () => {
       const danger = Date.now() - (data?.copy_time ?? 0) > 10 * 1000;
       html += `<div><span class="addr_item_value" style="${danger ? 'color:red;' : ''}">${date.toLocaleString().replace(/(^\d{4}\/)|(:\d{1,2}$)/g, '')}</span></div>`;
     }
-    html += `<div>ID：<span class="addr_item_value">${data?.parent_order_sn}</span></div>`;
-    html += `<div>姓名：<span class="addr_item_value">${data?.receipt_name}</span></div>`;
-    html += `<div>电话：<span class="addr_item_value">${data?.mobile}</span></div>`;
-    html += `<div>街道1：<span class="addr_item_value">${data?.address_line1}</span></div>`;
+    html += `<div><span class="addr_item_value">${data?.parent_order_sn}</span></div>`;
+    html += `<div>名: <span class="addr_item_value">${data?.receipt_name}</span></div>`;
+    html += `<div>电话: <span class="addr_item_value">${data?.mobile}</span></div>`;
+    html += `<div>街1: <span class="addr_item_value">${data?.address_line1}</span></div>`;
     if (data?.address_line2) {
-      html += `<div>街道2：<span class="addr_item_value">${data?.address_line2}</span></div>`;
+      html += `<div>街2: <span class="addr_item_value">${data?.address_line2}</span></div>`;
     }
-    html += `<div>国家：<span class="addr_item_value">${data?.region_name1}</span></div>`;
-    html += `<div>省份：<span class="addr_item_value">${data?.region_name2}</span></div>`;
-    html += `<div>城市：<span class="addr_item_value">${data?.region_name3}</span></div>`;
-    html += `<div>邮编：<span class="addr_item_value">${data?.post_code}</span></div>`;
+    html += `<div>国: <span class="addr_item_value">${data?.region_name1}</span></div>`;
+    html += `<div>省: <span class="addr_item_value">${data?.region_name2}</span></div>`;
+    html += `<div>市: <span class="addr_item_value">${data?.region_name3}</span></div>`;
+    html += `<div>邮编: <span class="addr_item_value">${data?.post_code}</span></div>`;
     if (data?.packagesData?.length) {
       html += '<div>[';
       data?.packagesData?.forEach(({ tracking_number, ship_company_name, ship_logistics_type, dataSource, shipping_label_url }, index) => {
-        html += `${index ? ', ' : ''}<a href="${dataSource ?? shipping_label_url}" download="${tracking_number}">${tracking_number}:${ship_company_name} ${ship_logistics_type}</a>`;
+        const packageCheckbox = `<input class="package_data_checkbox" type="checkbox" data-package-index="${index}" aria-label="选择面单" checked>`;
+        html += `${index ? ', ' : ''}${packageCheckbox}<a href="${dataSource ?? shipping_label_url}" download="${tracking_number}">${tracking_number}:${ship_company_name} ${ship_logistics_type}</a>`;
       });
       html += ']</div>';
     }
@@ -450,19 +600,19 @@ window.common_plugin_core = async () => {
       html += '</div>';
     }
     if (isCurrentCheckout('saleyee')) {
-      html += `<div><a class="sale_checkout_import">一键导入</a></div>`;
+      html += `<div><a class="sale_checkout_import">导入</a></div>`;
     }
     if (isCurrentCheckout('topwms')) {
-      html += `<div><a class="topwms_checkout_import">一键导入</a></div>`;
+      html += `<div><a class="topwms_checkout_import">导入</a></div>`;
     }
     if (isCurrentCheckout('goodcang')) {
-      html += `<div><a class="goodcang_checkout_import">一键导入</a></div>`;
+      html += `<div><a class="goodcang_checkout_import">导入</a></div>`;
     }
     if (isCurrentCheckout('xlwms')) {
-      html += `<div><a class="xlwms_checkout_import">一键导入</a></div>`;
+      html += `<div><a class="xlwms_checkout_import">导入</a></div>`;
     }
     if (isCurrentCheckout('youyi')) {
-      html += `<div><a class="youyi_checkout_import">一键导入</a></div>`;
+      html += `<div><a class="youyi_checkout_import">导入</a></div>`;
     }
     app.innerHTML = html;
     setTimeout(async () => {
@@ -499,8 +649,10 @@ window.common_plugin_core = async () => {
                     type = 'economy';
                   }
                   const types = type?.split(' ') ?? [];
-                  selectorList.push(`dd[lay-value="${company}_${types.join('_').toUpperCase()}"]`);
-                  selectorList.push(`dd[lay-value="${company} ${type}"]`);
+                  selectorList.push(`dd[lay-value^="${company}_${types.join('_').toUpperCase()}"]`);
+                  selectorList.push(`dd[lay-value^="${company} ${type}"]`);
+                  selectorList.push(`dd[lay-value^="${company} ${type.toUpperCase()}"]`);
+                  selectorList.push(`dd[lay-value^="${company}"]`);
                   tr.querySelector(selectorList.join(','))?.click();
                 }
                 const trackingNo = tr.querySelector('[name="TrackingNo"]');
@@ -544,6 +696,7 @@ window.common_plugin_core = async () => {
       app.classList.add('hide');
     }
   };
+  window.addEventListener('common_plugin_clipboard_ready', () => fn(true));
   const gcInitImport = async (timer) => {
     const c1 = document.querySelector('[label="发货仓（区域）"] .ant-select-selection__rendered');
     if (!c1) return;
@@ -717,7 +870,9 @@ window.common_plugin_core = async () => {
         mobileEle.value = data?.mobile || '';
         mobileEle.dispatchEvent(inputEvent);
 
-        const { tracking_number, ship_company_name, ship_logistics_type, dataSource, shipping_label_url } = data?.packagesData?.[0] ?? {};
+        const selectedPackage = getSelectedPackages(data)[0];
+        if (!selectedPackage) return;
+        const { tracking_number, ship_company_name, ship_logistics_type, dataSource, shipping_label_url } = selectedPackage;
         const noSelfMap = {
           FedEx: {
             'ground economy': 'WH_FEDEX_ECONOMY',
@@ -756,7 +911,7 @@ window.common_plugin_core = async () => {
           findElementsByText(logKey)?.[0]?.click?.();
         }
         const upload = document.querySelector('[data-sign="label_info_list.0.attachment.url"] input[type="file"]');
-        if (upload) {
+        if (upload && tracking_number && dataSource) {
           setFile(upload, `${tracking_number}.pdf`, dataSource);
         }
         if (logKey) {
@@ -766,7 +921,7 @@ window.common_plugin_core = async () => {
     }
     if (e.target.closest('.xlwms_checkout_import')) {
       const data = app.dataSource;
-      const { tracking_number, ship_company_name, ship_logistics_type, dataSource, shipping_label_url } = data?.packagesData?.[0] ?? {};
+      const { tracking_number, ship_company_name, ship_logistics_type, dataSource, shipping_label_url } = getSelectedPackages(data)[0] ?? {};
       const cangkuInput = document.querySelector('[for="whCode"]')?.nextElementSibling?.querySelector('input');
       if (cangkuInput && !cangkuInput?.value) {
         cangkuInput?.click?.();
@@ -788,7 +943,7 @@ window.common_plugin_core = async () => {
         dropdown__list && ship_company_name && findElementsByText(ship_company_name, dropdown__list)?.[0]?.click();
       }
       const logisticsSheetInput = document.querySelector('[for="logisticsSheet"]')?.nextElementSibling?.querySelector('input');
-      if (logisticsSheetInput && !logisticsSheetInput?.files?.length) {
+      if (logisticsSheetInput && !logisticsSheetInput?.files?.length && tracking_number && dataSource) {
         const handle = (e) => {
           e.preventDefault();
         };
@@ -798,7 +953,7 @@ window.common_plugin_core = async () => {
         await sleep(400);
         logisticsSheetInput.removeEventListener('click', handle);
       }
-      setInput(document.querySelector('[for="trackNo"]')?.nextElementSibling?.querySelector('input'), tracking_number);
+      tracking_number && setInput(document.querySelector('[for="trackNo"]')?.nextElementSibling?.querySelector('input'), tracking_number);
       const salesPlatformInput = document.querySelector('[for="salesPlatform"]')?.nextElementSibling?.querySelector('input');
       if (salesPlatformInput && !salesPlatformInput?.value) {
         salesPlatformInput?.click?.();
@@ -838,7 +993,7 @@ window.common_plugin_core = async () => {
     // 优一
     if (e.target.closest('.youyi_checkout_import')) {
       const data = app.dataSource;
-      const { tracking_number, dataSource } = data?.packagesData?.[0] ?? {};
+      const { tracking_number, dataSource } = getSelectedPackages(data)[0] ?? {};
       const countryInput = document.querySelector('[id="ajax_country"]');
       if (countryInput && !countryInput?.value) {
         get_country_list();

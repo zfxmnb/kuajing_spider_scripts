@@ -221,7 +221,8 @@ def rewrite_html_urls(body: bytes, content_type: str, target: SplitResult) -> by
         html = body.decode(encoding)
     except (LookupError, UnicodeDecodeError):
         return body
-    target_pattern = re.escape(f"{target.scheme}://{target.netloc}")
+    # 同源链接可能使用 http、https 或协议相对地址；全部转为相对路径以保持在本地代理域名。
+    target_pattern = rf"(?:https?:)?//{re.escape(target.netloc)}(?=[/?#]|$)"
     return re.sub(target_pattern, "", html, flags=re.IGNORECASE).encode(encoding)
 
 

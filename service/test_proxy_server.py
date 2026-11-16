@@ -173,10 +173,10 @@ class ProxyServerTest(unittest.TestCase):
                 upstream_server.server_close()
                 upstream_thread.join(timeout=5)
 
-    def test_rewrite_html_urls_preserves_external_urls(self) -> None:
-        body = b'<a href="https://www.baidu.com/search">search</a><img src="https://example.com/image.png">'
+    def test_rewrite_html_urls_keeps_same_origin_links_on_proxy(self) -> None:
+        body = b'<a href="https://www.baidu.com/search">search</a><a href="//www.baidu.com/login">login</a><img src="https://example.com/image.png">'
         actual = rewrite_html_urls(body, "text/html; charset=utf-8", self.target)
-        self.assertEqual(actual, b'<a href="/search">search</a><img src="https://example.com/image.png">')
+        self.assertEqual(actual, b'<a href="/search">search</a><a href="/login">login</a><img src="https://example.com/image.png">')
 
     def test_site_config_keeps_target_host(self) -> None:
         site = SiteConfig("baidu", 1001, self.target, 30)
