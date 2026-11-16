@@ -1,33 +1,27 @@
 window.common_plugin_core = async () => {
   console.log('common_plugin_core running', '202611131809');
-  const matchDomains = [
-    'www.gigab2b.com',
-    'www.saleyee.com',
-    'www.temu.com',
-    'xhl.topwms.com',
-    'us.goodcang.com',
-    'oms.goodcang.com',
-    'returnhelper.com',
-    'oms.xlwms.com',
-    'www.youyi4pl.com',
-    '127.0.0.1:2001',
-    '127.0.0.1:2002'
+  // 新增本地副本时只需补充 origins；同时在 common_plugin.js 添加对应的 @match。
+  const siteConfigs = [
+    { id: 'gigab2b', origins: ['https://www.gigab2b.com'], checkoutRoutes: [{ pathname: '/index.php', searchParams: { route: 'account/sales_order/sales_order_management' } }] },
+    { id: 'saleyee', origins: ['https://www.saleyee.com', 'http://127.0.0.1:2001'], checkoutRoutes: [{ pathname: '/user/order/confirm.html' }] },
+    { id: 'temu', origins: ['https://www.temu.com'] },
+    { id: 'topwms', origins: ['https://xhl.topwms.com'], checkoutRoutes: [{ pathname: '/manual_order/index' }] },
+    { id: 'goodcang', origins: ['https://us.goodcang.com', 'https://oms.goodcang.com'], checkoutRoutes: [{ pathname: '/order/add' }] },
+    { id: 'returnhelper', origins: ['https://returnhelper.com', 'https://cnuser.returnhelper.com', 'https://cnuser.returnhelper.com.hk'] },
+    { id: 'xlwms', origins: ['https://oms.xlwms.com'], checkoutRoutes: [{ pathname: '/warehouse/packet/create' }] },
+    { id: 'youyi', origins: ['http://www.youyi4pl.com', 'http://127.0.0.1:2002'], checkoutRoutes: [{ pathname: '/deliver.php' }] }
   ];
-  // 一下内容在指定域名下生效
-  if (!matchDomains.includes(window.location.host)) {
+  const currentSite = siteConfigs.find((site) => site.origins.includes(window.location.origin));
+  if (!currentSite) {
     return;
   }
-
-  const saleCheckout = 'https://www.saleyee.com/user/order/confirm.html';
-  const saleCheckout2 = 'https://127.0.0.1:2001/user/order/confirm.html';
-  const gigab2bCheckout = 'https://www.gigab2b.com/index.php?route=account/sales_order/sales_order_management';
-  const topwmsCheckout = 'https://xhl.topwms.com/manual_order/index';
-  const goodcangCheckout = 'https://us.goodcang.com/order/add';
-  const goodcangCheckoutV2 = 'https://oms.goodcang.com/order/add';
-  const xlwmsCheckout = 'https://oms.xlwms.com/warehouse/packet/create';
-  const youyiCheckout = 'http://www.youyi4pl.com/deliver.php';
-  const youyiCheckout2 = 'http://127.0.0.1:2002/deliver.php';
-  const checkoutUrls = [saleCheckout, saleCheckout2, gigab2bCheckout, topwmsCheckout, goodcangCheckout, goodcangCheckoutV2, xlwmsCheckout, youyiCheckout, youyiCheckout2];
+  const getCurrentUrl = () => new URL(window.location.href);
+  const matchesCheckoutRoute = (route, pageUrl) =>
+    (pageUrl.pathname === route.pathname || pageUrl.pathname.startsWith(`${route.pathname}/`)) &&
+    Object.entries(route.searchParams ?? {}).every(([name, value]) => pageUrl.searchParams.get(name) === value);
+  const isCurrentSite = (siteId) => currentSite.id === siteId;
+  const isCurrentCheckout = (siteId) => isCurrentSite(siteId) && currentSite.checkoutRoutes?.some((route) => matchesCheckoutRoute(route, getCurrentUrl()));
+  const isCurrentCheckoutPage = () => currentSite.checkoutRoutes?.some((route) => matchesCheckoutRoute(route, getCurrentUrl()));
   const addressConfigs = {
     'United States': {
       value: '1',
@@ -327,7 +321,7 @@ window.common_plugin_core = async () => {
     `);
   const root = html(`<div class="common_plugin hide"></div>`);
   const app = root.querySelector('.common_plugin');
-  if (window.location.href.includes('xhl.topwms.com')) {
+  if (isCurrentSite('topwms')) {
     let init = 0;
     const observer = new MutationObserver(
       debounce(() => {
@@ -368,7 +362,7 @@ window.common_plugin_core = async () => {
       subtree: true
     });
   }
-  if (window.location.href.includes('http://www.youyi4pl.com/deliver.php?act=add') || window.location.href.includes('http://127.0.0.1:2002/deliver.php?act=add')) {
+  if (isCurrentCheckout('youyi') && getCurrentUrl().searchParams.get('act') === 'add') {
     const fn = async () => {
       const countryInput = document.querySelector('[id="ajax_country"]');
       if (countryInput && !countryInput?.value) {
@@ -455,24 +449,24 @@ window.common_plugin_core = async () => {
       });
       html += '</div>';
     }
-    if (window.location.href.includes(saleCheckout)) {
+    if (isCurrentCheckout('saleyee')) {
       html += `<div><a class="sale_checkout_import">一键导入</a></div>`;
     }
-    if (window.location.href.includes(topwmsCheckout)) {
+    if (isCurrentCheckout('topwms')) {
       html += `<div><a class="topwms_checkout_import">一键导入</a></div>`;
     }
-    if (window.location.href.includes(goodcangCheckout) || window.location.href.includes(goodcangCheckoutV2)) {
+    if (isCurrentCheckout('goodcang')) {
       html += `<div><a class="goodcang_checkout_import">一键导入</a></div>`;
     }
-    if (window.location.href.includes(xlwmsCheckout)) {
+    if (isCurrentCheckout('xlwms')) {
       html += `<div><a class="xlwms_checkout_import">一键导入</a></div>`;
     }
-    if (window.location.href.includes(youyiCheckout) || window.location.href.includes(youyiCheckout2)) {
+    if (isCurrentCheckout('youyi')) {
       html += `<div><a class="youyi_checkout_import">一键导入</a></div>`;
     }
     app.innerHTML = html;
     setTimeout(async () => {
-      if (window.location.href.includes(saleCheckout) && document.querySelector('.alladdress li.active')) {
+      if (isCurrentCheckout('saleyee') && document.querySelector('.alladdress li.active')) {
         const sale_platform = new URLSearchParams(location.search).get('sale_platform') || 'Temu';
         document.querySelector('#salePlatforms').nextElementSibling.querySelector(`dd[lay-value="${sale_platform}"]`).click();
         document.querySelector('.other_order_information .order-referno').value = data?.parent_order_sn;
@@ -537,7 +531,7 @@ window.common_plugin_core = async () => {
   };
   let isCheckPage = false;
   const fn = (force) => {
-    if (checkoutUrls.some((url) => window.location.href.includes(url))) {
+    if (isCurrentCheckoutPage()) {
       if (!isCheckPage || !hasData || force) {
         setTimeout(() => {
           document.hasFocus();
@@ -600,7 +594,7 @@ window.common_plugin_core = async () => {
     document.addEventListener('visibilitychange', () => {
       if (
         document.visibilityState === 'visible' &&
-        (!(window.location.href.includes('http://www.youyi4pl.com') || window.location.href.includes('http://127.0.0.1:2002')) ||
+        (!isCurrentSite('youyi') ||
           new URLSearchParams(window.location.search).get('act') === 'add')
       ) {
         setTimeout(() => fn(true), 1000);
@@ -888,7 +882,7 @@ window.common_plugin_core = async () => {
       add_products(0);
     }
   });
-  if (window.location.href.includes(goodcangCheckout) || window.location.href.includes(goodcangCheckoutV2)) {
+  if (isCurrentCheckout('goodcang')) {
     const timer = setInterval(async () => {
       gcInitImport(timer);
     }, 1000);
