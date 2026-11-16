@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-  console.log('common_plugin_core running', '202611161739');
+  console.log('common_plugin_core running', '202611161859');
   // 新增本地副本时只需补充 origins；同时在 common_plugin.js 添加对应的 @match。
   const siteConfigs = [
     { id: 'gigab2b', origins: ['https://www.gigab2b.com'], checkoutRoutes: [{ pathname: '/index.php', searchParams: { route: 'account/sales_order/sales_order_management' } }] },
@@ -720,6 +720,26 @@ window.common_plugin_core = async () => {
                   await sleep(500);
                   upload.removeEventListener('click', handle);
                   setFile(upload, `${tracking_number}.pdf`, dataSource);
+                }
+              }
+            }
+            const warehouse_information = document.querySelector('.warehouse_information');
+            if (warehouse_information) {
+              const stateCode = String(data?.region_name2 || '')
+                .trim()
+                .toUpperCase();
+              const matchedRows = /^[A-Z]{2}$/.test(stateCode)
+                ? [...warehouse_information.querySelectorAll('tbody tr')].filter((row) =>
+                    row.querySelector('td:nth-child(3)')?.textContent?.trim().toUpperCase().startsWith(`${stateCode} `)
+                  )
+                : [];
+              // 仅唯一命中时自动选择，避免在同州多仓时替用户做出错误决策。
+              if (matchedRows.length === 1) {
+                const radio = matchedRows[0].querySelector('input[type="radio"][name="PlatformStock"]');
+                if (radio instanceof HTMLInputElement && !radio.checked) {
+                  const layuiRadio = radio.nextElementSibling;
+                  if (layuiRadio instanceof HTMLElement && layuiRadio.classList.contains('layui-form-radio')) layuiRadio.click();
+                  if (!radio.checked) radio.click();
                 }
               }
             }
