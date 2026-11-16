@@ -36,6 +36,7 @@ CORS_ALLOWED_ORIGINS: Final = frozenset({"https://seller.kuajingmaihuo.com", "ht
 CORS_ALLOWED_METHODS: Final = frozenset({"GET", "HEAD"})
 CORS_RESPONSE_HEADERS: Final = frozenset({"access-control-allow-origin", "access-control-allow-methods", "access-control-allow-headers", "access-control-allow-private-network"})
 FRAME_RESTRICTION_HEADERS: Final = frozenset({"x-frame-options"})
+CLIENT_DISCONNECT_ERRORS: Final = (BrokenPipeError, ConnectionResetError)
 
 
 @dataclass(frozen=True)
@@ -233,6 +234,12 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
     site: SiteConfig
     cookie_store: SharedCookieStore
 
+    def handle(self) -> None:
+        try:
+            super().handle()
+        except CLIENT_DISCONNECT_ERRORS:
+            self._log_client_disconnect()
+
     def do_GET(self) -> None:
         self._proxy()
 
@@ -296,10 +303,13 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", "0")
             self.end_headers()
         except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
-            self.send_error(HTTPStatus.BAD_REQUEST, str(error))
+            LOGGER.warning("Cookie 写入请求无效 site=%s error=%s", self.site.name, error)
+            self._send_proxy_error(HTTPStatus.BAD_REQUEST)
+        except CLIENT_DISCONNECT_ERRORS:
+            self._log_client_disconnect()
         except OSError:
             LOGGER.error("Cookie 缓存写入失败 site=%s", self.site.name)
-            self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR, "Cookie 缓存写入失败")
+            self._send_proxy_error(HTTPStatus.INTERNAL_SERVER_ERROR)
 
     def _proxy(self) -> None:
         try:
@@ -311,14 +321,36 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
                 response_body = response.read(MAX_RESPONSE_BODY_BYTES + 1)
                 if len(response_body) > MAX_RESPONSE_BODY_BYTES:
                     raise OSError(f"上游响应超过 {MAX_RESPONSE_BODY_BYTES} 字节")
-                self._send_response(response, response_body)
             finally:
                 upstream.close()
         except ValueError as error:
-            self.send_error(HTTPStatus.BAD_REQUEST, str(error))
+            LOGGER.warning("代理请求无效 site=%s path=%s error=%s", self.site.name, self.path, error)
+            self._send_proxy_error(HTTPStatus.BAD_REQUEST)
+            return
+        except CLIENT_DISCONNECT_ERRORS:
+            self._log_client_disconnect()
+            return
         except (OSError, http.client.HTTPException) as error:
             LOGGER.warning("上游请求失败 site=%s path=%s error=%s", self.site.name, self.path, error)
-            self.send_error(HTTPStatus.BAD_GATEWAY, "上游站点不可用")
+            self._send_proxy_error(HTTPStatus.BAD_GATEWAY)
+            return
+
+        try:
+            self._send_response(response, response_body)
+        except CLIENT_DISCONNECT_ERRORS:
+            self._log_client_disconnect()
+        except OSError as error:
+            LOGGER.error("响应处理失败 site=%s path=%s error=%s", self.site.name, self.path, error)
+            self._send_proxy_error(HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    def _send_proxy_error(self, status: HTTPStatus) -> None:
+        try:
+            self.send_error(status)
+        except CLIENT_DISCONNECT_ERRORS:
+            self._log_client_disconnect()
+
+    def _log_client_disconnect(self) -> None:
+        LOGGER.debug("客户端已断开 site=%s client=%s path=%s", self.site.name, self.client_address[0], getattr(self, "path", "-"))
 
     def _read_request_body(self) -> bytes | None:
         if self.headers.get("Transfer-Encoding"):

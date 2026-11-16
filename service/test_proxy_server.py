@@ -109,6 +109,23 @@ class ProxyServerTest(unittest.TestCase):
                 server.server_close()
                 thread.join(timeout=5)
 
+    def test_upstream_connection_failure_returns_standard_502_response(self) -> None:
+        with TemporaryDirectory() as directory:
+            server = create_server(SiteConfig("test", 0, urlsplit("http://127.0.0.1:1"), 30), Path(directory))
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=5)
+                connection.request("GET", "/")
+                response = connection.getresponse()
+                self.assertEqual(response.status, 502)
+                self.assertEqual(response.reason, "Bad Gateway")
+                connection.close()
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
     def test_upstream_set_cookie_updates_service_cache_without_browser_exposure(self) -> None:
         class UpstreamHandler(BaseHTTPRequestHandler):
             received_cookie = ""
