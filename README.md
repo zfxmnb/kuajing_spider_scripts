@@ -49,6 +49,12 @@ curl --request PUT http://127.0.0.1:2001/__local_proxy/cookie \
 
 该接口会原子覆盖该端口原有的 Cookie 缓存。传入空字符串会清空缓存。HTML 内指向同一上游的绝对 URL 和同源重定向会改写为本地路径，第三方地址保持不变。
 
+### 跨浏览器共享本地存储
+
+每个代理端口都提供独立的共享键值缓存，无需配置白名单。接口为 `GET /__local_proxy/storage?key=<key>` 与 `PUT /__local_proxy/storage`（请求体为 `{"key":"...","value":"..."}`），每个端口总容量限制为 `5 MiB`，接近常见浏览器 `localStorage` 配额。缓存与 Cookie 缓存一样使用站点隔离、原子写入和 `0700`/`0600` 权限。
+
+`common_plugin` 会在优一的本地代理页自动同步 `__prev_ck__` 与 `__youyi_sku_fnsku_map_v1__`。
+
 运行检查：
 
 ```bash

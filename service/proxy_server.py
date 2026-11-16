@@ -18,7 +18,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from types import FrameType
 from typing import Final
-from urllib.parse import SplitResult, urlsplit, urlunsplit
+from urllib.parse import SplitResult, parse_qs, urlsplit, urlunsplit
 
 
 LOGGER = logging.getLogger("local_reverse_proxy")
@@ -30,8 +30,11 @@ HOP_BY_HOP_HEADERS: Final = frozenset({"connection", "keep-alive", "proxy-authen
 RESPONSE_HEADERS_TO_SKIP: Final = HOP_BY_HOP_HEADERS | frozenset({"content-length"})
 HTML_CONTENT_TYPES: Final = ("text/html", "application/xhtml+xml")
 COOKIE_ENDPOINT: Final = "/__local_proxy/cookie"
+STORAGE_ENDPOINT: Final = "/__local_proxy/storage"
 COOKIE_HEADER_PATTERN: Final = re.compile(r"^\s*[^=;\s]+\s*=\s*[^;]*\s*(?:;\s*[^=;\s]+\s*=\s*[^;]*\s*)*$")
 COOKIE_CACHE_DIR: Final = Path(__file__).with_name(".runtime") / "cookies"
+STORAGE_CACHE_DIR: Final = Path(__file__).with_name(".runtime") / "storage"
+MAX_SHARED_STORAGE_BYTES: Final = 5 * 1024 * 1024
 CORS_ALLOWED_ORIGINS: Final = frozenset({"https://seller.kuajingmaihuo.com", "https://agentseller.temu.com", "https://agentseller-us.temu.com"})
 CORS_ALLOWED_METHODS: Final = frozenset({"GET", "HEAD"})
 CORS_RESPONSE_HEADERS: Final = frozenset({"access-control-allow-origin", "access-control-allow-methods", "access-control-allow-headers", "access-control-allow-private-network"})
@@ -203,6 +206,67 @@ class SharedCookieStore:
             return self._to_header(self._cookies)
 
 
+class SharedStorageStore:
+    def __init__(self, cache_path: Path) -> None:
+        self._cache_path = cache_path
+        self._lock = threading.Lock()
+        self._values = self._load()
+
+    @staticmethod
+    def _payload_size(values: dict[str, str]) -> int:
+        return len(json.dumps({"values": values}, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+
+    def _load(self) -> dict[str, str]:
+        if not self._cache_path.exists():
+            return {}
+        try:
+            with self._cache_path.open(encoding="utf-8") as cache_file:
+                payload = json.load(cache_file)
+            values = payload.get("values") if isinstance(payload, dict) else None
+            if not isinstance(values, dict) or any(not isinstance(key, str) or not isinstance(value, str) for key, value in values.items()) or self._payload_size(values) > MAX_SHARED_STORAGE_BYTES:
+                raise ValueError("缓存内容无效")
+            return values
+        except (OSError, json.JSONDecodeError, ValueError) as error:
+            LOGGER.warning("无法恢复共享存储缓存 file=%s error=%s", self._cache_path.name, error)
+            return {}
+
+    def _persist(self, values: dict[str, str]) -> None:
+        self._cache_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        os.chmod(self._cache_path.parent, 0o700)
+        file_descriptor, temporary_path = tempfile.mkstemp(prefix=f".{self._cache_path.name}.", suffix=".tmp", dir=self._cache_path.parent)
+        try:
+            os.fchmod(file_descriptor, 0o600)
+            with os.fdopen(file_descriptor, "w", encoding="utf-8") as cache_file:
+                json.dump({"values": values}, cache_file, ensure_ascii=False, separators=(",", ":"))
+                cache_file.flush()
+                os.fsync(cache_file.fileno())
+            os.replace(temporary_path, self._cache_path)
+            os.chmod(self._cache_path, 0o600)
+        except OSError:
+            try:
+                os.close(file_descriptor)
+            except OSError:
+                pass
+            try:
+                os.unlink(temporary_path)
+            except FileNotFoundError:
+                pass
+            raise
+
+    def get(self, key: str) -> str | None:
+        with self._lock:
+            return self._values.get(key)
+
+    def set(self, key: str, value: str) -> None:
+        with self._lock:
+            values = self._values.copy()
+            values[key] = value
+            if self._payload_size(values) > MAX_SHARED_STORAGE_BYTES:
+                raise ValueError("共享存储超过 5 MiB 限制")
+            self._persist(values)
+            self._values = values
+
+
 def localize_url(value: str, target: SplitResult) -> str:
     parsed = urlsplit(value)
     if parsed.scheme in {"http", "https"} and parsed.netloc == target.netloc:
@@ -234,6 +298,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     site: SiteConfig
     cookie_store: SharedCookieStore
+    storage_store: SharedStorageStore
 
     def handle(self) -> None:
         try:
@@ -242,6 +307,9 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             self._log_client_disconnect()
 
     def do_GET(self) -> None:
+        if self._is_storage_endpoint():
+            self._get_shared_storage()
+            return
         self._proxy()
 
     def do_POST(self) -> None:
@@ -250,6 +318,9 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
     def do_PUT(self) -> None:
         if self._is_cookie_endpoint():
             self._replace_cookie()
+            return
+        if self._is_storage_endpoint():
+            self._set_shared_storage()
             return
         self._proxy()
 
@@ -273,6 +344,9 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
 
     def _is_cookie_endpoint(self) -> bool:
         return urlsplit(self.path).path == COOKIE_ENDPOINT
+
+    def _is_storage_endpoint(self) -> bool:
+        return urlsplit(self.path).path == STORAGE_ENDPOINT
 
     def _is_allowed_cors_origin(self) -> bool:
         return self.headers.get("Origin") in CORS_ALLOWED_ORIGINS
@@ -310,6 +384,46 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             self._log_client_disconnect()
         except OSError:
             LOGGER.error("Cookie 缓存写入失败 site=%s", self.site.name)
+            self._send_proxy_error(HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    def _get_shared_storage(self) -> None:
+        try:
+            query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+            if set(query) != {"key"} or len(query["key"]) != 1:
+                raise ValueError("请求参数必须为 key")
+            value = self.storage_store.get(query["key"][0])
+            response_body = json.dumps({"value": value}, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(response_body)))
+            self.end_headers()
+            self.wfile.write(response_body)
+        except ValueError as error:
+            LOGGER.warning("共享存储读取请求无效 site=%s error=%s", self.site.name, error)
+            self._send_proxy_error(HTTPStatus.NOT_FOUND)
+        except CLIENT_DISCONNECT_ERRORS:
+            self._log_client_disconnect()
+
+    def _set_shared_storage(self) -> None:
+        try:
+            request_body = self._read_request_body()
+            if request_body is None:
+                raise ValueError("缺少请求体")
+            payload = json.loads(request_body)
+            if not isinstance(payload, dict) or set(payload) != {"key", "value"} or not isinstance(payload["key"], str) or not isinstance(payload["value"], str):
+                raise ValueError('请求体必须为 {"key":"...","value":"..."}')
+            self.storage_store.set(payload["key"], payload["value"])
+            self.send_response(HTTPStatus.NO_CONTENT)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+            LOGGER.warning("共享存储写入请求无效 site=%s error=%s", self.site.name, error)
+            self._send_proxy_error(HTTPStatus.BAD_REQUEST)
+        except CLIENT_DISCONNECT_ERRORS:
+            self._log_client_disconnect()
+        except OSError:
+            LOGGER.error("共享存储写入失败 site=%s", self.site.name)
             self._send_proxy_error(HTTPStatus.INTERNAL_SERVER_ERROR)
 
     def _proxy(self) -> None:
@@ -417,9 +531,14 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         LOGGER.info("site=%s client=%s %s", self.site.name, self.client_address[0], message % args)
 
 
-def create_server(site: SiteConfig, cookie_cache_dir: Path = COOKIE_CACHE_DIR) -> ThreadingHTTPServer:
-    cache_path = cookie_cache_dir / f"{site.name}.json"
-    handler = type(f"{site.name.title()}ProxyHandler", (ProxyRequestHandler,), {"site": site, "cookie_store": SharedCookieStore(cache_path)})
+def create_server(site: SiteConfig, cookie_cache_dir: Path = COOKIE_CACHE_DIR, storage_cache_dir: Path = STORAGE_CACHE_DIR) -> ThreadingHTTPServer:
+    cookie_cache_path = cookie_cache_dir / f"{site.name}.json"
+    storage_cache_path = storage_cache_dir / f"{site.name}.json"
+    handler = type(
+        f"{site.name.title()}ProxyHandler",
+        (ProxyRequestHandler,),
+        {"site": site, "cookie_store": SharedCookieStore(cookie_cache_path), "storage_store": SharedStorageStore(storage_cache_path)},
+    )
     server = ThreadingHTTPServer(("127.0.0.1", site.listen_port), handler)
     server.daemon_threads = True
     return server

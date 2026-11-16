@@ -6,9 +6,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from stat import S_IMODE
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 from urllib.parse import urlsplit
 
-from proxy_server import COOKIE_ENDPOINT, SharedCookieStore, SiteConfig, create_server, load_sites, localize_url, remove_frame_ancestors, rewrite_html_urls
+from proxy_server import COOKIE_ENDPOINT, MAX_SHARED_STORAGE_BYTES, STORAGE_ENDPOINT, SharedCookieStore, SharedStorageStore, SiteConfig, create_server, load_sites, localize_url, remove_frame_ancestors, rewrite_html_urls
 
 
 class ProxyServerTest(unittest.TestCase):
@@ -82,6 +83,48 @@ class ProxyServerTest(unittest.TestCase):
                 server.shutdown()
                 server.server_close()
                 thread.join(timeout=5)
+
+    def test_shared_storage_endpoint_accepts_any_key(self) -> None:
+        with TemporaryDirectory() as directory:
+            site = SiteConfig("test", 0, urlsplit("https://example.com"), 30)
+            cache_dir = Path(directory)
+            server = create_server(site, cache_dir / "cookies", cache_dir / "storage")
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=5)
+                request_body = json.dumps({"key": "__prev_ck__", "value": "2"}).encode("utf-8")
+                connection.request("PUT", STORAGE_ENDPOINT, request_body, {"Content-Type": "application/json"})
+                response = connection.getresponse()
+                self.assertEqual(response.status, 204)
+                response.read()
+                connection.request("GET", f"{STORAGE_ENDPOINT}?key=__prev_ck__")
+                response = connection.getresponse()
+                self.assertEqual(response.status, 200)
+                self.assertEqual(json.loads(response.read()), {"value": "2"})
+                connection.request("GET", f"{STORAGE_ENDPOINT}?key=__other_key__")
+                response = connection.getresponse()
+                self.assertEqual(response.status, 200)
+                self.assertEqual(json.loads(response.read()), {"value": None})
+                connection.close()
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+    def test_shared_storage_store_limits_total_size(self) -> None:
+        with TemporaryDirectory() as directory:
+            storage_store = SharedStorageStore(Path(directory) / "storage.json")
+            with self.assertRaisesRegex(ValueError, "5 MiB"):
+                storage_store.set("large", "x" * MAX_SHARED_STORAGE_BYTES)
+
+    def test_shared_storage_store_keeps_memory_unchanged_when_persist_fails(self) -> None:
+        with TemporaryDirectory() as directory:
+            storage_store = SharedStorageStore(Path(directory) / "storage.json")
+            with patch.object(storage_store, "_persist", side_effect=OSError("disk failure")):
+                with self.assertRaisesRegex(OSError, "disk failure"):
+                    storage_store.set("key", "value")
+            self.assertIsNone(storage_store.get("key"))
 
     def test_cors_preflight_only_allows_temu_management_origin(self) -> None:
         with TemporaryDirectory() as directory:

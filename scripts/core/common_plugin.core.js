@@ -257,6 +257,56 @@ window.common_plugin_core = async () => {
   }
   const commonPluginDataCacheKey = '__common_plugin_data__';
   const pageWindow = typeof unsafeWindow === 'undefined' ? window : unsafeWindow;
+  const youyiSharedStorageKeys = ['__prev_ck__', '__youyi_sku_fnsku_map_v1__'];
+  const isLocalOrLanHost = (hostname) => {
+    const host = hostname.replace(/^\[|\]$/g, '').toLowerCase();
+    if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host === '::1' || /^f[cd][0-9a-f:]*$/i.test(host) || /^fe[89ab][0-9a-f:]*$/i.test(host))
+      return true;
+    const parts = host.split('.').map(Number);
+    if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
+    return parts[0] === 10 || parts[0] === 127 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || (parts[0] === 192 && parts[1] === 168);
+  };
+  const isYouyiLocalProxy = () => isCurrentSite('youyi') && isLocalOrLanHost(window.location.hostname);
+  const getYouyiSharedStorageValue = async (key) => {
+    try {
+      const response = await fetch(`/__local_proxy/storage?key=${encodeURIComponent(key)}`, { cache: 'no-store' });
+      if (!response.ok) return;
+      const payload = await response.json();
+      return typeof payload?.value === 'string' ? payload.value : undefined;
+    } catch (err) {
+      return;
+    }
+  };
+  const setYouyiSharedStorageValue = (key, value) => {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch (err) {}
+    if (!isYouyiLocalProxy()) return;
+    void fetch('/__local_proxy/storage', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value })
+    }).catch(() => {});
+  };
+  const syncYouyiSharedStorage = async () => {
+    if (!isYouyiLocalProxy()) return;
+    await Promise.all(
+      youyiSharedStorageKeys.map(async (key) => {
+        const sharedValue = await getYouyiSharedStorageValue(key);
+        if (sharedValue !== undefined) {
+          try {
+            window.localStorage.setItem(key, sharedValue);
+          } catch (err) {}
+          return;
+        }
+        try {
+          const localValue = window.localStorage.getItem(key);
+          if (localValue !== null) setYouyiSharedStorageValue(key, localValue);
+        } catch (err) {}
+      })
+    );
+  };
+  const youyiSharedStorageReady = syncYouyiSharedStorage();
   let clipboardContent;
   const cacheClipboardContent = (content) => {
     if (typeof content !== 'string' || !content) return;
@@ -437,6 +487,7 @@ window.common_plugin_core = async () => {
   }
   if (isCurrentCheckout('youyi') && getCurrentUrl().searchParams.get('act') === 'add') {
     const fn = async () => {
+      await youyiSharedStorageReady;
       const countryInput = document.querySelector('[id="ajax_country"]');
       if (countryInput && !countryInput?.value) {
         get_country_list();
@@ -451,7 +502,7 @@ window.common_plugin_core = async () => {
         !cangkuSelect?.value && prevCk && document.querySelector('.ms-select-item[data-text="请选择发货仓库"]')?.parentElement?.querySelector(`[data-val="${prevCk}"]`)?.click();
         const changeEvent = cangkuSelect.onchange;
         cangkuSelect.onchange = function (e, ...rest) {
-          e.target.value && window.localStorage.setItem('__prev_ck__', e.target.value);
+          e.target.value && setYouyiSharedStorageValue('__prev_ck__', e.target.value);
           changeEvent?.call(this, e, ...rest);
         };
       }
@@ -510,9 +561,7 @@ window.common_plugin_core = async () => {
     if (!sku || !fnsku) return;
     const map = getYouyiSkuFnskuMap();
     map[sku] = fnsku;
-    try {
-      window.localStorage.setItem(youyiSkuFnskuCacheKey, JSON.stringify(map));
-    } catch (err) {}
+    setYouyiSharedStorageValue(youyiSkuFnskuCacheKey, JSON.stringify(map));
   };
   const getYouyiProductRow = (fnsku) => [...document.querySelectorAll('#table tr')].find((row) => row.querySelector('input[name="ck_sku[]"]')?.value?.trim() === fnsku);
   const setYouyiQuantityInput = (input, quantity) => {
@@ -531,6 +580,7 @@ window.common_plugin_core = async () => {
   const isYouyiAddProductsPage = () => isCurrentSite('youyi') && getCurrentUrl().pathname === '/deliver.php' && getCurrentUrl().searchParams.get('act') === 'add_products';
   const initializeYouyiProductMapping = () => {
     const applyCachedQuantity = async () => {
+      await youyiSharedStorageReady;
       const product = await getYouyiSingleProduct();
       const fnsku = product && getYouyiSkuFnskuMap()[product.sku];
       const quantityInput = fnsku && getYouyiProductRow(fnsku)?.querySelector('input[name="nums[]"]');
@@ -541,6 +591,7 @@ window.common_plugin_core = async () => {
       if (!(quantityInput instanceof HTMLInputElement) || !quantityInput.matches('#table input[name="nums[]"]')) return;
       const quantity = Number(quantityInput.value);
       if (!Number.isFinite(quantity) || quantity <= 0) return;
+      await youyiSharedStorageReady;
       const product = await getYouyiSingleProduct();
       const fnsku = quantityInput.closest('tr')?.querySelector('input[name="ck_sku[]"]')?.value?.trim();
       if (product && fnsku) saveYouyiSkuFnsku(product.sku, fnsku);
@@ -994,6 +1045,7 @@ window.common_plugin_core = async () => {
     if (e.target.closest('.youyi_checkout_import')) {
       const data = app.dataSource;
       const { tracking_number, dataSource } = getSelectedPackages(data)[0] ?? {};
+      await youyiSharedStorageReady;
       const countryInput = document.querySelector('[id="ajax_country"]');
       if (countryInput && !countryInput?.value) {
         get_country_list();
