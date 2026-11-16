@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-  console.log('common_plugin_core running', '202611131809');
+  console.log('common_plugin_core running', '202611161229');
   // 新增本地副本时只需补充 origins；同时在 common_plugin.js 添加对应的 @match。
   const siteConfigs = [
     { id: 'gigab2b', origins: ['https://www.gigab2b.com'], checkoutRoutes: [{ pathname: '/index.php', searchParams: { route: 'account/sales_order/sales_order_management' } }] },
@@ -592,11 +592,7 @@ window.common_plugin_core = async () => {
   const loadedFn = () => {
     setTimeout(() => fn(true), 1000);
     document.addEventListener('visibilitychange', () => {
-      if (
-        document.visibilityState === 'visible' &&
-        (!isCurrentSite('youyi') ||
-          new URLSearchParams(window.location.search).get('act') === 'add')
-      ) {
+      if (document.visibilityState === 'visible' && (!isCurrentSite('youyi') || new URLSearchParams(window.location.search).get('act') === 'add')) {
         setTimeout(() => fn(true), 1000);
       }
     });
