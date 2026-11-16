@@ -1319,11 +1319,27 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
     const warehouse = getSelectedWarehouse();
     return warehouse?.useFallbackUrl ? warehouse.fallbackUrl : warehouse?.url || warehouse?.fallbackUrl || '';
   };
+  const getSaleyeeSearchKeyword = (products) => {
+    const title = typeof products?.[0]?.title === 'string' ? products[0].title : '';
+    // 从左至右取首段连续的中文、英文、数字或空格；避免将标点带入搜索词。
+    const matchedText = title.match(/[\p{Script=Han}A-Za-z0-9 \u3000]{5,}/u)?.[0]?.trim();
+    return matchedText ? matchedText.slice(0, 15) : '';
+  };
+  const withSaleyeeSearchKeyword = (warehouseUrl, products) => {
+    try {
+      const searchUrl = new URL(warehouseUrl);
+      const keyword = searchUrl.searchParams.has('inputkwd') && getSaleyeeSearchKeyword(products);
+      if (keyword) searchUrl.searchParams.set('inputkwd', keyword);
+      return searchUrl.href;
+    } catch (_) {
+      return warehouseUrl;
+    }
+  };
   const getAddrAndPackage = async (text, href, ele) => {
-    const launch = async (packagesData) => {
+    const launch = async (packagesData, products = addressMap[text]?.products) => {
       const isHttp = !!href && /^#*http/.test(href);
       const selectedWarehouse = isHttp ? null : getSelectedWarehouse();
-      const warehouseUrl = isHttp ? href.replace(/^#+/, '') : getSelectedWarehouseUrl();
+      const warehouseUrl = withSaleyeeSearchKeyword(isHttp ? href.replace(/^#+/, '') : getSelectedWarehouseUrl(), products);
       const launchWarehouse = !!warehouseUrl;
       const shouldOpenFallbackUrl = !!selectedWarehouse?.useFallbackUrl;
       const shouldOpenWarehouseInIframe = /^https?:\/\/127\.0\.0\.1(?::\d+)?(?:\/|$)/.test(warehouseUrl);
@@ -1412,8 +1428,8 @@ window.temu_helper_v2_core = async (fetchInterceptor) => {
         }
         res.products = products;
         copyToClipboard(JSON.stringify(res));
-        launch(packagesData);
         addressMap[text] = res;
+        launch(packagesData, products);
       }
     });
   };

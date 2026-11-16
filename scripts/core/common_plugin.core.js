@@ -3,7 +3,12 @@ window.common_plugin_core = async () => {
   // 新增本地副本时只需补充 origins；同时在 common_plugin.js 添加对应的 @match。
   const siteConfigs = [
     { id: 'gigab2b', origins: ['https://www.gigab2b.com'], checkoutRoutes: [{ pathname: '/index.php', searchParams: { route: 'account/sales_order/sales_order_management' } }] },
-    { id: 'saleyee', origins: ['https://www.saleyee.com', 'http://127.0.0.1:2001'], checkoutRoutes: [{ pathname: '/user/order/confirm.html' }] },
+    {
+      id: 'saleyee',
+      origins: ['https://www.saleyee.com', 'http://127.0.0.1:2001'],
+      checkoutRoutes: [{ pathname: '/user/order/confirm.html' }],
+      displayRoutes: [{ pathname: '/search.html' }]
+    },
     { id: 'temu', origins: ['https://www.temu.com'] },
     { id: 'topwms', origins: ['https://xhl.topwms.com'], checkoutRoutes: [{ pathname: '/manual_order/index' }] },
     { id: 'goodcang', origins: ['https://us.goodcang.com', 'https://oms.goodcang.com'], checkoutRoutes: [{ pathname: '/order/add' }] },
@@ -23,6 +28,8 @@ window.common_plugin_core = async () => {
   const isCurrentSite = (siteId) => currentSite.id === siteId;
   const isCurrentCheckout = (siteId) => isCurrentSite(siteId) && currentSite.checkoutRoutes?.some((route) => matchesCheckoutRoute(route, getCurrentUrl()));
   const isCurrentCheckoutPage = () => currentSite.checkoutRoutes?.some((route) => matchesCheckoutRoute(route, getCurrentUrl()));
+  const isCurrentDisplayPage = () =>
+    isCurrentCheckoutPage() || currentSite.displayRoutes?.some((route) => matchesCheckoutRoute(route, getCurrentUrl()));
   const addressConfigs = {
     'United States': {
       value: '1',
@@ -762,7 +769,7 @@ window.common_plugin_core = async () => {
   };
   let isCheckPage = false;
   const fn = (force) => {
-    if (isCurrentCheckoutPage()) {
+    if (isCurrentDisplayPage()) {
       if (!isCheckPage || !hasData || force) {
         setTimeout(() => {
           document.hasFocus();
