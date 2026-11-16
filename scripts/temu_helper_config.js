@@ -49,13 +49,15 @@
       WeComRobotWebhook: '',
 
       // 是否开启调价和限流通知。该功能仅在 AutoDisabled 为 false 时运行；默认 false。
-      // PriceAdjustNotice: false,
+      PriceAdjustNotice: false,
 
       // 是否关闭自动商品/订单同步及调价监控；默认 true。
       // true 不会关闭订单、售后、聊天和登录异常等通知轮询。
-      // AutoDisabled: true
+      AutoDisabled: true,
 
-      // 是否开启点击“面单“完成在线下单
+      // 是否关闭点击“面单”后的 Temu 内嵌在线下单页；默认 false。
+      // false：无面单且当前仓库未切换至 fallbackUrl 时，打开 Temu 在线下单页。
+      // true：跳过 Temu 在线下单页，优先按选中仓库的链接跳转；有面单时始终按仓库链接处理。
       PlaceAnOrderOnlineDisabled: false,
 
       // 发货仓库列表。页面会显示选择框并按店铺缓存选择；url 优先，url 无效时使用 fallbackUrl。
