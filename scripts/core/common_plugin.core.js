@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-  console.log('common_plugin_core running', '202611161859');
+  console.log('common_plugin_core running', '202611162022');
   // 新增本地副本时只需补充 origins；同时在 common_plugin.js 添加对应的 @match。
   const siteConfigs = [
     { id: 'gigab2b', origins: ['https://www.gigab2b.com'], checkoutRoutes: [{ pathname: '/index.php', searchParams: { route: 'account/sales_order/sales_order_management' } }] },
@@ -720,6 +720,14 @@ window.common_plugin_core = async () => {
                   await sleep(500);
                   upload.removeEventListener('click', handle);
                   setFile(upload, `${tracking_number}.pdf`, dataSource);
+                  let retry = 2;
+                  const fn = () => {
+                    if (!tr.querySelector('input[name="LabelDownloadId"]') && retry > 0) {
+                      retry--
+                      tr.querySelector('button[id="uploadPickUpLabel1"]:not([disabled])') && setFile(upload, `${tracking_number}.pdf`, dataSource);
+                    }
+                  }
+                  setTimeout(fn, 1500)
                 }
               }
             }
