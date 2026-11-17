@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-  console.log('common_plugin_core running', '202611162022');
+  console.log('common_plugin_core running', '202611171502');
   // 新增本地副本时只需补充 origins；同时在 common_plugin.js 添加对应的 @match。
   const siteConfigs = [
     { id: 'gigab2b', origins: ['https://www.gigab2b.com'], checkoutRoutes: [{ pathname: '/index.php', searchParams: { route: 'account/sales_order/sales_order_management' } }] },
@@ -28,8 +28,7 @@ window.common_plugin_core = async () => {
   const isCurrentSite = (siteId) => currentSite.id === siteId;
   const isCurrentCheckout = (siteId) => isCurrentSite(siteId) && currentSite.checkoutRoutes?.some((route) => matchesCheckoutRoute(route, getCurrentUrl()));
   const isCurrentCheckoutPage = () => currentSite.checkoutRoutes?.some((route) => matchesCheckoutRoute(route, getCurrentUrl()));
-  const isCurrentDisplayPage = () =>
-    isCurrentCheckoutPage() || currentSite.displayRoutes?.some((route) => matchesCheckoutRoute(route, getCurrentUrl()));
+  const isCurrentDisplayPage = () => isCurrentCheckoutPage() || currentSite.displayRoutes?.some((route) => matchesCheckoutRoute(route, getCurrentUrl()));
   const addressConfigs = {
     'United States': {
       value: '1',
@@ -442,6 +441,21 @@ window.common_plugin_core = async () => {
     `);
   const root = html(`<div class="common_plugin hide"></div>`);
   const app = root.querySelector('.common_plugin');
+  const getPackageSelectionCacheKey = (data) => `__common_plugin_package_selection__${data?.parent_order_sn || ''}`;
+  const getPackageSelections = (data) => {
+    try {
+      const selections = JSON.parse(window.sessionStorage.getItem(getPackageSelectionCacheKey(data)) || '[]');
+      return Array.isArray(selections) ? selections : [];
+    } catch (err) {
+      return [];
+    }
+  };
+  const savePackageSelections = (data, selections) => {
+    try {
+      // 面单选择仅在当前标签页会话中保留，避免影响其他订单和后续浏览器会话。
+      window.sessionStorage.setItem(getPackageSelectionCacheKey(data), JSON.stringify(selections));
+    } catch (err) {}
+  };
   const getSelectedPackages = (data) => {
     const packages = Array.isArray(data?.packagesData) ? data.packagesData : [];
     const checkboxes = [...app.querySelectorAll('.package_data_checkbox')];
@@ -641,9 +655,10 @@ window.common_plugin_core = async () => {
     html += `<div>市: <span class="addr_item_value">${data?.region_name3}</span></div>`;
     html += `<div>邮编: <span class="addr_item_value">${data?.post_code}</span></div>`;
     if (data?.packagesData?.length) {
+      const packageSelections = getPackageSelections(data);
       html += '<div>[';
       data?.packagesData?.forEach(({ tracking_number, ship_company_name, ship_logistics_type, dataSource, shipping_label_url }, index) => {
-        const packageCheckbox = `<input class="package_data_checkbox" type="checkbox" data-package-index="${index}" aria-label="选择面单" checked>`;
+        const packageCheckbox = `<input class="package_data_checkbox" type="checkbox" data-package-index="${index}" aria-label="选择面单"${packageSelections[index] === false ? '' : ' checked'}>`;
         html += `${index ? ', ' : ''}${packageCheckbox}<a href="${dataSource ?? shipping_label_url}" download="${tracking_number}">${tracking_number}:${ship_company_name} ${ship_logistics_type}</a>`;
       });
       html += ']</div>';
@@ -686,17 +701,18 @@ window.common_plugin_core = async () => {
         if (BX0002 && BX0002?.checked) {
           BX0002?.nextElementSibling.click();
         }
-        if (data?.packagesData?.length && document.querySelector(`.pick_up_table tbody`)) {
+        const selectedPackages = getSelectedPackages(data);
+        if (selectedPackages.length && document.querySelector(`.pick_up_table tbody`)) {
           const hasData = !!document.querySelector(`.pick_up_table tbody tr [name="TrackingNo"]`)?.value;
           if (!hasData) {
             let currentLen = document.querySelectorAll(`.pick_up_table tbody tr`)?.length || 0;
-            for (var j = currentLen; j < data?.packagesData?.length; j++) {
+            for (var j = currentLen; j < selectedPackages.length; j++) {
               document.querySelector('.add_pick_up')?.click?.();
             }
             await sleep(100);
             currentLen = document.querySelectorAll(`.pick_up_table tbody tr`)?.length || 0;
             for (var i = 0; i < currentLen; i++) {
-              const { tracking_number, ship_company_name, ship_logistics_type, dataSource } = data?.packagesData[i] ?? {};
+              const { tracking_number, ship_company_name, ship_logistics_type, dataSource } = selectedPackages[i] ?? {};
               const tr = document.querySelector(`.pick_up_table tbody tr:nth-child(${i + 1})`);
               if (tr) {
                 const selectorList = [];
@@ -727,14 +743,17 @@ window.common_plugin_core = async () => {
                   await sleep(500);
                   upload.removeEventListener('click', handle);
                   setFile(upload, `${tracking_number}.pdf`, dataSource);
-                  let retry = 2;
-                  const fn = () => {
-                    if (!tr.querySelector('input[name="LabelDownloadId"]') && retry > 0) {
-                      retry--
+                  let retry = 3;
+                  while (retry > 0) {
+                    await sleep(1000);
+                    const has = tr.querySelector('input[name="LabelDownloadId"]');
+                    if (!has && retry > 0) {
                       tr.querySelector('button[id="uploadPickUpLabel1"]:not([disabled])') && setFile(upload, `${tracking_number}.pdf`, dataSource);
+                    } else if (has) {
+                      retry = 0;
                     }
+                    retry--;
                   }
-                  setTimeout(fn, 1500)
                 }
               }
             }
@@ -845,6 +864,17 @@ window.common_plugin_core = async () => {
     if (e.target.classList.contains('addr_item_value')) {
       copyToClipboard(e.target.innerText);
     }
+  });
+  app.addEventListener('change', (e) => {
+    const checkbox = e.target;
+    if (!(checkbox instanceof HTMLInputElement) || !checkbox.classList.contains('package_data_checkbox')) return;
+    const data = app.dataSource;
+    const packages = Array.isArray(data?.packagesData) ? data.packagesData : [];
+    const index = Number(checkbox.dataset.packageIndex);
+    if (!Number.isInteger(index) || index < 0 || index >= packages.length) return;
+    const storedSelections = getPackageSelections(data);
+    const selections = packages.map((_, packageIndex) => (packageIndex === index ? checkbox.checked : storedSelections[packageIndex] !== false));
+    savePackageSelections(data, selections);
   });
   app.addEventListener('click', async (e) => {
     if (e.target.closest('.sale_checkout_import')) {
