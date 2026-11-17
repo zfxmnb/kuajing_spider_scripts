@@ -55,6 +55,32 @@ curl --request PUT http://127.0.0.1:2001/__local_proxy/cookie \
 
 `common_plugin` 会在优一的本地代理页自动同步 `__prev_ck__` 与 `__youyi_sku_fnsku_map_v1__`。
 
+### 赛盈库存查询
+
+赛盈代理端口提供只读库存解析接口：
+
+```text
+GET /__local_proxy/saleyee/stock?skuId=66267279&warehouseId=123&province=NJ
+```
+
+服务会请求 `/item/<skuId>.html?warehouseId=<warehouseId>`，解析页面 `.hideDefaultSkuData` 中与请求仓库匹配的 `WarehouseSendAddressList[].StockItemList`，并返回页面原始商品字段 `ProductName`、`Sku`、`SPU`、`Spec`、`IsAllowUsePlatformWarehouseDesc`、`IsAllowUsePlatformWarehouse` 及 `StockItemList`。`StockItemList` 会过滤非正数量项。可选入参 `province` 接受美国州或 DC 的两位代码，服务以州级内部代表点通过 Haversine 公式估算距离，按距离升序排序；同距离时再将 `PlatformStockAbbr` 或 `ShipAddressDetail` 与退货仓库 `AddressList` 匹配的库存项稳定排在前面。未传 `province` 时保持退货仓库优先排序。外层 `DiscountPrice`、`Price`、`LogisticsProductName` 优先取 `ProductDetailRegionLogisticsProductList[].ProductDetailLogisticsProductList` 中的 `Self-Pick up`，无可用价格时兜底 `Standard Shipping`、`Standard Logistics` 或 `标准物流`；该物流结构不存在时兼容回退库存项。外层 `Qty` 为全部 `StockItemList[].Qty` 的数值累加。每个 `StockItemList` 项仅含 `PlatformStockAbbr`、`Qty`、`ShipAddressDetail`、`StockProvince`、`StockCity`、`StockPostCode`、`Tel`。`WarehouseReturnAddressList` 每项仅返回 `WarehouseName`、`AddressList`。
+
+### SKU 映射
+
+每个代理端口均提供映射接口。映射在服务启动时从对应站点的 `sku-mappings/<site>.json` 读入内存，后续 GET 仅读取内存；PUT 接收单条映射并由服务端原子合并后持久化。不同端口的映射独立存储。
+
+```text
+PUT /__local_proxy/sku-mapping
+Content-Type: application/json
+
+{"TEMU-SKU-1":"SALE-YEE-1","TEMU-SKU-2":"SALE-YEE-2"}
+
+GET /__local_proxy/sku-mapping
+GET /__local_proxy/sku-mapping?sku=TEMU-SKU-1,TEMU-SKU-2
+```
+
+PUT 和 GET 均直接返回 JSON Map，例如 `{"TEMU-SKU-1":"SALE-YEE-1"}`。GET 的 `sku` 参数支持逗号分隔多个值。
+
 运行检查：
 
 ```bash

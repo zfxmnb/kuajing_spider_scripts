@@ -1,5 +1,5 @@
 window.common_plugin_core = async () => {
-  console.log('common_plugin_core running', '202611171502');
+  console.log('common_plugin_core running', '202611171740');
   // 新增本地副本时只需补充 origins；同时在 common_plugin.js 添加对应的 @match。
   const siteConfigs = [
     { id: 'gigab2b', origins: ['https://www.gigab2b.com'], checkoutRoutes: [{ pathname: '/index.php', searchParams: { route: 'account/sales_order/sales_order_management' } }] },
@@ -629,6 +629,68 @@ window.common_plugin_core = async () => {
     setTimeout(() => observer.disconnect(), 10000);
   };
   if (isYouyiAddProductsPage()) initializeYouyiProductMapping();
+  const saleyeeSkuMappingUrl = 'http://127.0.0.1:2001/__local_proxy/sku-mapping';
+  const getSaleyeeCheckoutProduct = () => {
+    const productRows = document.querySelectorAll('.commodity-information .goods-table tbody tr[name="cartItem"]');
+    if (productRows.length !== 1) return;
+    const skuElement = productRows[0].querySelector('.product_attribute');
+    const sku = skuElement?.textContent?.match(/SKU\s*[：:]\s*(\S+)/i)?.[1]?.trim();
+    if (!sku || !skuElement) return;
+    return { sku, skuElement };
+  };
+  const getSaleyeeSkuMappings = async () => {
+    try {
+      const response = await fetch(saleyeeSkuMappingUrl, { cache: 'no-store' });
+      if (!response.ok) return {};
+      const mappings = await response.json();
+      return mappings && typeof mappings === 'object' && !Array.isArray(mappings) ? mappings : {};
+    } catch (err) {
+      return {};
+    }
+  };
+  const getSaleyeeSkuMappingButtonTitle = (temuSku, saleyeeSku) => `Temu SKU：${temuSku}\n点击后将当前赛盈 SKU（${saleyeeSku}）同步到本地 SKU 映射。`;
+  const initializeSaleyeeSkuMappingButton = async (data) => {
+    if (!isCurrentCheckout('saleyee') || !Array.isArray(data?.packagesData) || !data.packagesData.length || !Array.isArray(data?.products) || data.products.length !== 1) return;
+    const temuSku = typeof data.products[0]?.sku === 'string' ? data.products[0].sku.trim() : '';
+    const saleyeeProduct = getSaleyeeCheckoutProduct();
+    if (!temuSku || !saleyeeProduct) return;
+    const mappings = await getSaleyeeSkuMappings();
+    const hasMapping = typeof mappings[temuSku] === 'string' && !!mappings[temuSku];
+    let button = saleyeeProduct.skuElement.parentElement?.querySelector('.common_plugin_saleyee_sku_mapping');
+    if (!button) {
+      button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'common_plugin_saleyee_sku_mapping';
+      button.style.cssText =
+        'margin-left:6px;padding:0 4px;border:1px solid #1e9fff;border-radius:2px;background:#fff;color:#1e9fff;cursor:pointer;font-size:11px;line-height:1;height:20px;';
+      saleyeeProduct.skuElement.insertAdjacentElement('afterend', button);
+      button.addEventListener('click', async () => {
+        const currentTemuSku = button.dataset.temuSku;
+        const currentSaleyeeSku = button.dataset.saleyeeSku;
+        if (!currentTemuSku || !currentSaleyeeSku || button.disabled) return;
+        if (!window.confirm(`确认将 Temu SKU（${currentTemuSku}）映射为赛盈 SKU（${currentSaleyeeSku}）吗？`)) return;
+        button.disabled = true;
+        try {
+          const response = await fetch(saleyeeSkuMappingUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ [currentTemuSku]: currentSaleyeeSku })
+          });
+          if (!response.ok) throw new Error(`SKU 映射同步失败: ${response.status}`);
+          button.textContent = '重新同步SKU映射';
+          button.title = currentTemuSku;
+        } catch (err) {
+          button.textContent = '同步SKU映射失败';
+        } finally {
+          button.disabled = false;
+        }
+      });
+    }
+    button.dataset.temuSku = temuSku;
+    button.dataset.saleyeeSku = saleyeeProduct.sku;
+    button.textContent = hasMapping ? '重新同步SKU映射' : '同步SKU映射';
+    button.title = getSaleyeeSkuMappingButtonTitle(temuSku, saleyeeProduct.sku);
+  };
   let hasData = false;
   const handle = async () => {
     const data = await getData();
@@ -689,6 +751,7 @@ window.common_plugin_core = async () => {
     }
     app.innerHTML = html;
     setTimeout(async () => {
+      void initializeSaleyeeSkuMappingButton(data);
       if (isCurrentCheckout('saleyee') && document.querySelector('.alladdress li.active')) {
         const sale_platform = new URLSearchParams(location.search).get('sale_platform') || 'Temu';
         document.querySelector('#salePlatforms').nextElementSibling.querySelector(`dd[lay-value="${sale_platform}"]`).click();
